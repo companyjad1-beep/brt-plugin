@@ -74,5 +74,6 @@ description: Thin Claude Code adapter for the brtimg prompt harness.
 - `holdout-eval/`에는 접근하지 않는다.
 - 입력이 부족하면 실패로 단정하지 말고 `conversational`로 전환해 필요한 정보만 요청한다.
 - 산출물 저장 규약과 수동 감사는 `core/schema/storage-conventions.md`를 읽어 따른다.
+- 충실도가 중요한 요청(리슛·인물 화보·이미지→프롬프트 역분석)은 `core/prompts/deep-decomposition.md`의 fidelity anchors·역분석 프로토콜(INVENTORY→FILL→READ-BACK)·교차필드 정합을 적용하고, 필드 구조는 `core/schema/image-prompt-template.json`을 참조한다.
 - 저장 후 `node core/tools/validate.mjs <저장경로>`를 실행해 결과를 출력 계약에 포함한다.
 - 검증 실행이 불가능하면 수동 감사 결과와 대체 사유를 출력 계약에 포함한다.

@@ -1,0 +1,185 @@
+{
+  "_origin": "sanguneo 공개 웨비나(2026-07-10) image_prompt_template.json 기반. brtimg 딥 디컴포지션 참조 템플릿 — 운용 규칙은 core/prompts/deep-decomposition.md 참조.",
+  "_usage": "이미지→JSON 역분석(refine) 또는 딥 브리프용 필드 구조. 최종 finalText는 이 필드를 자연문으로 조립하되 loop.md §7 위생 규칙을 따른다. 안 채운 항목·언더스코어(_) 필드는 최종 출력에서 제외.",
+  "meta": {
+    "purpose": "IMAGE GENERATION PROMPT — 이 JSON은 단일 사진을 생성하기 위한 자기완결 지시서다. 제공되면 분석·요약·재작성하지 말고 묘사된 이미지를 생성한다.",
+    "title": "짧은 서술형 제목 3~8단어 (피사체+장면+무드)",
+    "aspect_ratio": "9:16 | 3:4 | 2:3 | 1:1 | 4:3 | 3:2 | 16:9 — 소스 프레임 비율에 맞춤",
+    "orientation": "portrait | landscape | square (aspect_ratio와 일치)",
+    "style": "전반 비주얼 스타일 (예: photorealistic editorial beauty portrait)",
+    "genre": "장르·바이브 (예: quiet minimal studio portrait)",
+    "mood": ["calm", "clean", "dreamy"]
+  },
+  "fidelity_anchors": [
+    "RANK1 — 이 컷을 가장 정의하는 요소를 구체 앵커로 (예: blunt chin-length black bob, straight see-through bangs)",
+    "RANK2 — (예: black off-shoulder top with a thin black choker)",
+    "RANK3 — (예: single white daisy held vertically in front of the lips)",
+    "RANK4~8 — 5~8개까지 랭킹. 하나라도 놓치면 다른 컷. 이 섹션은 맨 마지막에 작성"
+  ],
+  "subject": {
+    "gender": "adult woman",
+    "age": "20-27",
+    "ethnicity": "East Asian",
+    "appearance": {
+      "build": "보이는 체형만 (예: slim, narrow shoulders)",
+      "skin": "이 장면 조명 아래 피부 (예: pale porcelain, cool studio light, subtle natural blush)"
+    },
+    "expression": {
+      "overall_impression": "먼저 한두 문장으로 표정을 하나의 느낌으로 (예: calm and inward, unposed stillness)",
+      "emotion_keywords": "3~5 단어 (예: serene, still, quiet, unguarded)",
+      "eyebrows": "위치·텐션 (예: relaxed neutral, not raised)",
+      "eyelids": "개방·무게 (예: eyes open naturally, upper lid relaxed, not widened)",
+      "eye_direction": "홍채가 실제 향한 방향 (gaze.direction과 일치)",
+      "lips": "닫힘/벌어짐 + mm (예: closed, no tension)",
+      "mouth_detail": "입 주변 근육 텐션",
+      "jaw": "턱 텐션·치아 접촉 여부",
+      "facial_muscles": "전체 이완/긴장 상태",
+      "avoid": ["exaggerated emotion", "consciously posed look"]
+    },
+    "gaze": {
+      "direction": "카메라 직시 / 오프카메라 / 소품 응시",
+      "quality": "초점 선명도 + 눈가 근육 텐션 (예: soft, slightly unfocused, relaxed periorbital)",
+      "emotion": "눈의 감정 온도를 질적으로 (예: softly detached, as if the mind is elsewhere)",
+      "iris_alignment": "양 홍채가 정확히 같은 방향 (사시 방지)",
+      "sclera_visibility": "흰자 노출량·방향 (홍채 위치 기준 — 롤백 방지)",
+      "gaze_body_alignment": "시선·홍채·머리 방향 3자 정합 확인"
+    },
+    "makeup": {
+      "overall_level": "no makeup | minimal natural | soft everyday | editorial | full glam (없어도 명시)",
+      "skin_base": "베이스 커버감",
+      "eyes": { "eyeliner": "", "eyeshadow": "", "mascara": "" },
+      "lips": { "color": "", "texture": "" },
+      "cheeks": { "blush": "", "highlighter": "", "contour": "" },
+      "avoid": ["cakey texture", "overdone glam"]
+    }
+  },
+  "hair": {
+    "_priority": "헤어스타일리스트가 재현 가능한 수준으로. 아래 항목을 구체 앵커로.",
+    "length": "몸 어디에 닿는지 (예: chin-length bob)",
+    "color": "베이스+톤 변화+빛 반응 (예: deep near-black, slight cool sheen in key light)",
+    "style": "컷 이름 (예: Korean see-through bob)",
+    "overall_silhouette": "외곽 형태 (예: A-line, angled longer toward jaw)",
+    "parting": "가르마 위치·선명도",
+    "layers": "레이어 시작 지점·효과",
+    "ends": "끝 처리 (예: point-cut, curls inward at jaw in a C-shape)",
+    "bangs": "두께·밀도·길이·이마 안착 (예: thin wispy see-through fringe, above brows)",
+    "side_hair": "얼굴 옆 흐름",
+    "ear_visibility": "양 귀 노출/가림",
+    "hair_line": "헤어라인 형태 또는 뱅으로 가림",
+    "volume": "볼륨 위치·정도",
+    "texture": "촉감·시각 질감 (예: silky, fine strands visible)",
+    "flyaways": "잔머리 유무·정도",
+    "condition": "컨디션 (예: healthy matte, no product shine)",
+    "movement": "정지/미풍/윈드스웹",
+    "avoid": ["curl not in reference", "flat 2D illustrated hair"]
+  },
+  "scene": {
+    "location": "구체 장소 유형 (예: minimal light-gray studio)",
+    "environment": ["구체 환경 요소 + 위치"],
+    "key_objects": [
+      {
+        "_note": "이 장면을 정의하는 모든 사물마다 1개씩. 모호한 배경이 불충실 생성의 주원인.",
+        "what": "실제 사물명 (예: white daisy)",
+        "position_in_frame": "프레임 내 위치",
+        "distance_from_subject": "피사체와의 거리",
+        "color": "명명색",
+        "focus": "초점 상태"
+      }
+    ],
+    "background_rendering": { "complexity": "", "focus": "", "depth": "" }
+  },
+  "wardrobe": {
+    "top": {
+      "type": "", "color": "명명색", "fit": "", "fabric": "", "neckline": "",
+      "sleeve_length": "", "length_and_tuck": "", "layering": "", "style": "",
+      "details": []
+    },
+    "bottom": { "_note": "안 보이면 섹션 전체 삭제", "type": "", "color": "", "fit": "", "fabric": "", "length": "" },
+    "legwear": { "_note": "안 보이면 삭제", "type": "", "tone": "", "appearance": "" },
+    "shoes": { "_note": "안 보이면 삭제", "type": "", "style": "", "color": "", "design": "" },
+    "accessories": { "items": ["재질·크기·위치 (없으면 'none' 명시)"], "avoid": [] },
+    "overall_style": []
+  },
+  "pose": {
+    "description": "포즈 개요",
+    "camera_facing": "카메라를 향한 몸 면 (frontal / 3/4 / profile / rear 3/4)",
+    "body_axis_to_camera": "몸 축과 카메라의 각도 (예: 45도)",
+    "depth_direction": "프레임 내 깊이 점유 방식",
+    "camera_distance": "카메라-피사체 추정 거리(m) + 친밀감",
+    "spatial_relationships": "피사체와 주요 사물의 위치·거리 관계",
+    "arms": "팔 위치 (relaxed/natural 여부 명시)",
+    "hand_action": "손 동작",
+    "head_orientation": "pitch/yaw/roll 개별 (턱 들림·좌우 돌림·기울임)",
+    "neck_anatomy": "목 자연스러운 연결 (신장·왜곡 금지)",
+    "shoulder_anatomy": "어깨 상태",
+    "posture": "자세 품질",
+    "adjustment_rule": "우선순위 (예: 목·어깨 해부학이 완전 정면 얼굴보다 우선)",
+    "head_gaze_expression_lock": "머리각·홍채·눈꺼풀·입의 상호작용 고정"
+  },
+  "lighting": {
+    "type": "조명 타입 (예: soft diffused studio daylight)",
+    "quality": "광질",
+    "source": "방향을 시계 방위로 (예: from 10 o'clock, slightly above)",
+    "skin_lighting_behavior": {
+      "lit_side": "빛측 피부 색온도 효과",
+      "shadow_side": "그림자측 색온도",
+      "transition": "명암 전이",
+      "overall_skin_tone": "피부가 전체 동일색이면 안 됨 — 빛측은 광원색 반영, 그림자측은 깊이·웜 유지",
+      "avoid": ["flat evenly-lit skin", "skin tone unaffected by light color temperature"]
+    },
+    "effects": [],
+    "avoid": ["harsh direct sun", "overexposed skin highlights"]
+  },
+  "composition_map": {
+    "_note": "프레임 공간 레이아웃을 못박아 생성기가 임의 발명하지 못하게. 무드 아닌 실제 사물명.",
+    "frame_crop": "프레임이 몸 어디를 자르나 + 헤드룸 비율",
+    "foreground": "전경 (없으면 'nothing — subject closest to camera')",
+    "midground": "피사체 배치·주변",
+    "background": "실제 배경 사물명",
+    "left_third": "좌 1/3 내용",
+    "center_third": "중앙 1/3 내용",
+    "right_third": "우 1/3 내용",
+    "edge_contacts": "각 엣지에 닿거나 잘리는 것"
+  },
+  "camera": {
+    "composition": "구도 유형",
+    "angle": "앵글 (예: natural eye-level)",
+    "focal_length": "85mm 인물 압축 / 50mm 균형 / 35mm 환경 — 근접 인물은 35mm 미만 지양",
+    "shot_type": "close-up | bust | waist-up | three-quarter | full body",
+    "subject_position": "프레임 내 배치 (시선 방향에 여백)",
+    "rule_of_thirds": "삼분법 적용 여부·기준",
+    "negative_space": "여백 위치·효과",
+    "depth_of_field": "심도",
+    "style": "카메라 스타일"
+  },
+  "color_grading": {
+    "style": "그레이드 스타일",
+    "palette": ["명명색 1", "명명색 2"],
+    "contrast": "soft | medium | high",
+    "saturation": "",
+    "finish": {
+      "blacks": "가장 어두운 톤 렌더 (예: lifted matte / deep clean)",
+      "highlights": "밝은 톤 롤오프",
+      "grain": "필름 그레인 유무",
+      "overall_finish": "matte film-like | glossy commercial | neutral digital"
+    },
+    "processing": "처리 느낌"
+  },
+  "anatomy_and_proportion": {
+    "_note": "포즈에 맞춰 채운다. 회전 포즈는 목, 앉은 포즈는 다리/엉덩이, 팔 든 포즈는 팔 길이 주의.",
+    "head_size": "머리:몸 비율 1/7~1/8, 과대·과소 금지",
+    "neck": "목 길이·두께 현실적, 신장·왜곡 없이 어깨로 자연 연결",
+    "shoulder_width": "어깨:머리 비율 약 2~2.5 머리폭",
+    "hand_size": "손이 보이면 전완 대비 비율 (과대·과소 금지)",
+    "overall_body_proportions": "현실 인체 비율, 단축·원근 왜곡 금지",
+    "avoid": ["head too large or small", "elongated/broken neck", "extra or missing fingers", "foreshortening artifacts"]
+  },
+  "quality": ["photorealistic", "high_detail", "realistic_skin_texture", "natural_hair_detail", "realistic_fabric_texture", "realistic_anatomy"],
+  "negative_prompt": [
+    "flat even skin lighting", "skin tone unaffected by light color temperature", "plastic skin", "over-smoothed skin", "overexposed skin",
+    "head too large", "head too small", "elongated neck", "neck distortion", "unnatural head rotation",
+    "bad anatomy", "extra fingers", "missing fingers", "deformed hands", "unrealistic proportions", "foreshortening artifacts",
+    "cluttered background", "anime", "anime style", "cartoon", "illustration", "digital painting", "2D style", "cel shading",
+    "stylized eyes", "oversized eyes", "eye highlight orbs", "non-photorealistic", "3D render", "cgi", "watermark", "logo", "text"
+  ]
+}
