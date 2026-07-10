@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// SOT: brtwritenotai = 0.skill/brtwritenotai / brtimg = 0.skill/imgprmpt / kickoff = 0.skill/claude-skills(깃허브 limch-skills) / store-shots = screenshot 레포
+// SOT: brtwritenotai = 0.skill/brtwritenotai / brtimg = 0.skill/imgprmpt / kickoff = 0.skill/claude-skills(깃허브 limch-skills) / store-shots = 0.skill/store-shots
 // 이 플러그인은 배포 스냅샷 — SOT 수정 후 `node sync.mjs`로 갱신한다.
 import { cpSync, rmSync, readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
@@ -9,7 +9,7 @@ const NEWZ = 'D:/business/programming/newz';
 const WRITE = 'D:/business/programming/0.skill/brtwritenotai';
 const IMG = 'D:/business/programming/0.skill/imgprmpt';
 const CS = 'D:/business/programming/0.skill/claude-skills';
-const SHOT = 'D:/business/programming/screenshot';
+const SHOT = 'D:/business/programming/0.skill/store-shots';
 
 // brtwritenotai (하네스: SKILL 어댑터 + core 통짜, 경로가 스킬-폴더 상대라 패치 불요)
 rmSync('skills/brtwritenotai', { recursive: true, force: true });
@@ -33,7 +33,7 @@ rmSync('skills/brtimg/core', { recursive: true, force: true });
 cpSync('skills/brtimg/core.new', 'skills/brtimg/core', { recursive: true });
 rmSync('skills/brtimg/core.new', { recursive: true, force: true });
 
-// store-shots (SOT = screenshot 레포 — SKILL + 렌더러/설정 예시 번들)
+// store-shots (SOT = 0.skill/store-shots — SKILL + 렌더러/설정 예시 번들)
 rmSync('skills/store-shots', { recursive: true, force: true });
 cpSync(join(SHOT, '.claude/skills/store-shots'), 'skills/store-shots', { recursive: true });
 cpSync(join(SHOT, 'generate.py'), 'skills/store-shots/generate.py');
@@ -54,7 +54,7 @@ patch('skills/brtimg/SKILL.md', [
 ]);
 // store-shots 플러그인 스냅샷은 번들 경로 사용 (파일 경로만 치환 — SOT 안내 문구의 레포 경로는 유지)
 patch('skills/store-shots/SKILL.md', [
-  ['D:/business/programming/screenshot/generate.py', '${CLAUDE_PLUGIN_ROOT}/skills/store-shots/generate.py'],
-  ['D:/business/programming/screenshot/config.example.yaml', '${CLAUDE_PLUGIN_ROOT}/skills/store-shots/config.example.yaml'],
+  ['D:/business/programming/0.skill/store-shots/generate.py', '${CLAUDE_PLUGIN_ROOT}/skills/store-shots/generate.py'],
+  ['D:/business/programming/0.skill/store-shots/config.example.yaml', '${CLAUDE_PLUGIN_ROOT}/skills/store-shots/config.example.yaml'],
 ]);
 console.log('SYNCED');

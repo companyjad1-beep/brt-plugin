@@ -91,7 +91,7 @@ description: 앱스토어/플레이스토어 출시 자산 자동 생성 — 앱
 
 **절차:**
 1. 마케팅 포인트별 배경 콘셉트를 정한다 (예: 감정일기 → 달빛 밤하늘, 가계부 앱 → 아늑한 저녁 식탁, 지도 앱 → 항공뷰 도시 보케).
-2. Fable 5급 기준으로 프롬프트를 작성한다 — brtimg 하네스가 있으면 `/brt:img-build`로, 없으면 그 규약대로 직접: 구도·조명(색온도/방향)·질감·색 팔레트(브랜드 hex 명시)·무드 전부 명시, 세로 비율, 상단 1/3은 텍스트 오버레이용 여백(low-detail) 지시, "no text, no letters, no logos" 필수.
+2. Fable 5급 기준으로 프롬프트를 작성한다 — brtimg 하네스가 있으면 `/brt:img-prmpt build`로, 없으면 그 규약대로 직접: 구도·조명(색온도/방향)·질감·색 팔레트(브랜드 hex 명시)·무드 전부 명시, 세로 비율, 상단 1/3은 텍스트 오버레이용 여백(low-detail) 지시, "no text, no letters, no logos" 필수.
 3. **codex CLI로 생성** — codex는 내장 `image_gen` 스킬을 가지므로 워킹디렉토리와 저장 경로만 명시하면 생성→검증→저장까지 스스로 처리한다 (실측 검증됨, codex-cli 0.144+):
    ```
    codex exec --sandbox workspace-write -C <앱루트/store_assets> "이미지 생성 도구로 세로 배경 1장을 생성해 marketing/backgrounds/<name>.png 로 저장해라. 프롬프트: <영문 프롬프트>. 생성이 불가능하면 NOIMAGE 라고만 출력해라."
@@ -117,4 +117,4 @@ description: 앱스토어/플레이스토어 출시 자산 자동 생성 — 앱
 ## 주의
 
 - 이 스킬은 대상 앱의 제품 코드를 수정하지 않는다. 산출물은 `store_assets/` 아래에만 쓴다.
-- 렌더러(`generate.py`) 자체의 버그/개선은 SOT인 `D:/business/programming/screenshot` 레포에서 수정한다.
+- 렌더러(`generate.py`) 자체의 버그/개선은 SOT인 `D:/business/programming/0.skill/store-shots` 레포에서 수정한다.
