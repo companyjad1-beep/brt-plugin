@@ -85,3 +85,22 @@ feature_graphic:
   background: ["#232B47", "#12141F"]
   text_color: "#F2E6C9"
   source: screens/home.png       # 지정 시 우측에 디바이스, 텍스트 좌측 정렬 (생략 시 중앙 텍스트)
+
+# 임의 사이즈 배너 (OG·소셜·PH 갤러리·스토리) — 생략 시 미생성. output/banners/<locale>/ 에 저장
+# 가로·정사각(h<=w)은 피처그래픽 레이아웃(텍스트 좌 + 디바이스 우), 세로(h>w)는 스크린샷 레이아웃으로 자동 라우팅
+banners:
+- name: og                       # 파일명 (생략 시 "1200x630")
+  width: 1200                    # 웹 OG / 트위터 카드
+  height: 630
+  title: "[답장]이 오는 일기장"
+  subtitle: "밤마다, 아무 말이나 괜찮아"
+  source: screens/home.png       # 생략 시 텍스트 전용
+  # device_width: 0.24           # 캔버스 폭 대비 디바이스 폭 (가로형 기본 0.24)
+  # device_top: 0.10             # 디바이스 상단 y 비율 (가로형)
+- name: story                    # 세로형 예 — 인스타 스토리/릴스 커버
+  width: 1080
+  height: 1920
+  title: "답장이 오는 일기장"
+  subtitle: "쓰면, 도란이가 읽고 답해줘"
+  source: screens/home.png
+  frame: false                   # 세로형은 screens와 같은 옵션(frame/crop/badge/rotate 등) 사용

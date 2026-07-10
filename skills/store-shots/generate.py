@@ -14,6 +14,7 @@ Output layout:
 from __future__ import annotations
 
 import re
+import math
 import sys
 from pathlib import Path
 
@@ -397,7 +398,7 @@ def render(
 
     if quote:
         device = build_quote_card(quote, round(width * device_width))
-    else:
+    elif shot_path is not None:
         shot = Image.open(shot_path)
         if crop:
             sw, sh = shot.size
@@ -407,23 +408,25 @@ def render(
             device = frame_device(shot, round(width * device_width))
         else:
             device = frameless_card(shot, round(width * (device_width if device_width != 0.74 else 0.80)))
-    if rotate:
-        device = device.rotate(rotate, expand=True, resample=Image.BICUBIC)
-    if shadow:
-        device = drop_shadow(device, blur=round(width * 0.03),
-                             alpha=100, dy=round(width * 0.012))
-
-    if device_top > 0:
-        # Fixed device anchor (uniform placement across a set).
-        top = round(height * device_top)
     else:
-        top = y + round(height * 0.035)
-        available = height - top
-        if device.height <= available and device_position != "top":
-            # Center in remaining space ("top" hugs the headline instead).
-            top += (available - device.height) // 2
-        # else: device bleeds off the bottom edge (intentional marketing style).
-    canvas.alpha_composite(device, ((width - device.width) // 2, top))
+        device = None  # text-only slide (e.g. portrait banner without a capture)
+    if device is not None:
+        if rotate:
+            device = device.rotate(rotate, expand=True, resample=Image.BICUBIC)
+        if shadow:
+            device = drop_shadow(device, blur=round(width * 0.03),
+                                 alpha=100, dy=round(width * 0.012))
+        if device_top > 0:
+            # Fixed device anchor (uniform placement across a set).
+            top = round(height * device_top)
+        else:
+            top = y + round(height * 0.035)
+            available = height - top
+            if device.height <= available and device_position != "top":
+                # Center in remaining space ("top" hugs the headline instead).
+                top += (available - device.height) // 2
+            # else: device bleeds off the bottom edge (intentional marketing style).
+        canvas.alpha_composite(device, ((width - device.width) // 2, top))
 
     # Floating UI cutouts (Zeta-style evidence chips) — composited above the device.
     for co in cutouts or []:
@@ -469,8 +472,9 @@ def render_feature(
 
     source = localized(spec.get("source"), locale) or None
     color = hex_to_rgb(spec.get("text_color", default_color))
-    title_font = ImageFont.truetype(FONTS["bold"], round(h * 0.13))
-    sub_font = ImageFont.truetype(FONTS["regular"], round(h * 0.066))
+    base = math.sqrt(w * h)  # size-invariant type scale (1024x500 ≈ old h-based values)
+    title_font = ImageFont.truetype(FONTS["bold"], round(base * 0.091))
+    sub_font = ImageFont.truetype(FONTS["regular"], round(base * 0.046))
     margin = round(w * 0.06)
     text_w = round(w * 0.58) if source else w - 2 * margin
 
@@ -501,8 +505,12 @@ def render_feature(
         y += round(font.size * 1.28)
 
     if source:
-        device = frame_device(Image.open(root / source), round(w * 0.24))
-        canvas.alpha_composite(device, (round(w * 0.70), round(h * 0.10)))
+        dw = float(spec.get("device_width", 0.24))
+        device = frame_device(Image.open(root / source), round(w * dw))
+        # Anchor to the right edge; vertically centered-ish with headroom.
+        dx = w - device.width - round(w * 0.05)
+        dy = round(h * float(spec.get("device_top", 0.10)))
+        canvas.alpha_composite(device, (dx, dy))
     return canvas.convert("RGB")
 
 
@@ -537,8 +545,9 @@ def main() -> None:
 
     out_root = root / (cfg.get("output_dir") or "output")
     screens = cfg.get("screens") or []
-    if not screens:
-        sys.exit("config error: no screens defined")
+    if not screens and not cfg.get("feature_graphic") and not cfg.get("banners"):
+        sys.exit("config error: no screens, feature_graphic, or banners defined")
+    enabled = enabled if screens else []
 
     count = 0
     for target_name in enabled:
@@ -610,6 +619,45 @@ def main() -> None:
             img.save(out_dir / "feature.png")
             count += 1
         print(f"[done] playstore_feature: {len(locales)} images")
+
+    banners = cfg.get("banners") or []
+    if banners:
+        for locale in locales:
+            FONTS = resolve_fonts(locale)
+            out_dir = out_root / "banners" / locale
+            out_dir.mkdir(parents=True, exist_ok=True)
+            for i, bn in enumerate(banners, start=1):
+                w, h = int(bn.get("width", 1200)), int(bn.get("height", 630))
+                if h > w:
+                    # Portrait (story/reel) → screenshot-style vertical layout.
+                    src_val = bn.get("source")
+                    img = render(
+                        shot_path=(root / localized(src_val, locale)) if src_val else None,
+                        title=title_lines(bn.get("title"), locale),
+                        subtitle=localized(bn.get("subtitle"), locale),
+                        width=w,
+                        height=h,
+                        bg=bn.get("background", default_bg),
+                        text_color=bn.get("text_color", default_color),
+                        bg_image=(root / bn["background_image"]) if bn.get("background_image") else None,
+                        overlay=float(bn.get("overlay", 0.35 if bn.get("background_image") else 0.0)),
+                        badge=localized(bn.get("badge"), locale),
+                        align=bn.get("align", "center"),
+                        accent_color=bn.get("accent_color", ""),
+                        frame=bool(bn.get("frame", True)),
+                        device_width=float(bn.get("device_width", 0.74)),
+                        rotate=float(bn.get("rotate", 0.0)),
+                        crop=bn.get("crop"),
+                        seed=f"banner/{i}",
+                    )
+                else:
+                    # Landscape/square (OG, feature, PH gallery) → text-left layout.
+                    img = render_feature({**bn, "width": w, "height": h},
+                                         locale, root, default_bg, default_color)
+                name = f"{i:02d}_{bn.get('name') or f'{w}x{h}'}.png"
+                img.save(out_dir / name)
+                count += 1
+        print(f"[done] banners: {len(locales) * len(banners)} images")
 
     print(f"total {count} images -> {out_root}")
 
