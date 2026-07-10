@@ -1,0 +1,104 @@
+schemaVersion: 1
+target: image
+verdicts: [충족, 부분 충족, 미달, 판정 불가]
+passCondition: "적용 대상 항목 전부 충족이어야 합격. '해당 시' 항목은 해당하지 않으면 '판정 불가'가 아니라 제외"
+scoringScope: "finalText만 단독 채점하지 않고 prompt 파일 전체(referenceImagePaths, characterSheetRef 포함) 기준으로 채점"
+items:
+  - id: image-subject-specificity
+    category: 피사체
+    question: "주 피사체가 인물·제품·브랜드 요소와 고정 외형 단서까지 한 문장 이상으로 구체화되어 있는가?"
+    rationale: "피사체가 모호하면 모델이 임의의 얼굴, 제품, 오브젝트를 보강해 결과 일관성이 떨어진다."
+    failure_examples:
+      - "멋진 사람을 그려줘."
+      - "프리미엄 제품 이미지."
+  - id: image-action-gaze
+    category: 행동과 시선
+    question: "피사체의 행동, 포즈, 시선, 손 위치 또는 제품 상호작용이 화면에 보이는 방식으로 지정되어 있는가?"
+    rationale: "행동과 시선은 인물·제품의 의도를 결정하므로 추상 감정보다 관찰 가능한 지시가 필요하다."
+    failure_examples:
+      - "자연스럽고 자신감 있게."
+      - "제품과 함께 좋은 분위기."
+  - id: image-scene-context
+    category: 장면 맥락
+    question: "장소, 시간대, 배경, 문화적 맥락, 사용 목적이 필요한 범위까지 포함되어 있는가?"
+    rationale: "장면 맥락이 있어야 배경과 소품이 목적에 맞게 제한되고 스톡 이미지처럼 흐려지지 않는다."
+    failure_examples:
+      - "예쁜 배경에서."
+      - "광고 느낌의 장소."
+  - id: image-composition-camera
+    category: 구도와 카메라
+    question: "프레이밍, 앵글, 렌즈감, 심도, 배치, 여백 또는 종횡비가 명시되어 있는가?"
+    rationale: "구도 지시는 카피 여백, 제품 가시성, 인물 비율을 제어하는 핵심 게이트다."
+    failure_examples:
+      - "보기 좋게 배치."
+      - "고급스러운 사진 구도."
+  - id: image-lighting-texture
+    category: 조명
+    question: "광원 방향, 조명 질감, 대비, 색온도, 분위기가 구체적으로 지정되어 있는가?"
+    rationale: "조명은 피부·제품 재질·텍스트 가독성에 직접 영향을 주므로 방향과 질감을 분리해야 한다."
+    failure_examples:
+      - "밝고 예쁜 조명."
+      - "시네마틱 라이트."
+  - id: image-style-medium
+    category: 스타일과 매체
+    question: "스타일이 추상 품질어가 아니라 사진, 광고, 에디토리얼, 렌더, 일러스트 등 매체와 마감·질감으로 설명되어 있는가?"
+    rationale: "매체와 마감이 없으면 모델이 임의의 미학을 선택해 의도와 다른 결과를 만든다."
+    failure_examples:
+      - "고퀄리티, 마스터피스, 울트라 디테일."
+      - "프리미엄 느낌으로."
+  - id: image-text-typography
+    category: 이미지 내 텍스트
+    question: "이미지 안 텍스트가 필요한 경우 정확한 문구를 따옴표로 감싸고 폰트 성격, 위치, 크기, 정렬, 추가 텍스트 금지를 지정했는가? 해당 시 필수다."
+    rationale: "정확한 문구와 타이포그래피 제약이 없으면 오탈자, 중복 문구, 임의 텍스트가 발생한다."
+    failure_examples:
+      - "한글 타이틀을 넣어줘."
+      - "세일 문구를 예쁘게 추가."
+  - id: image-hard-constraints
+    category: 제약
+    question: "워터마크, 랜덤 로고, 추가 오브젝트, 추가 인물, 과도한 장식, 원치 않는 재디자인 금지가 행동 가능한 문장으로 포함되어 있는가?"
+    rationale: "하드 제약은 모델이 빈 공간을 임의 요소로 채우거나 브랜드 자산을 변형하는 위험을 줄인다."
+    failure_examples:
+      - "깔끔하게만 해줘."
+      - "제약 없음."
+  - id: image-identity-anchors
+    category: 인물 일관성
+    question: "인물이 중요한 경우 얼굴 기하, 피부 톤, 헤어라인, 헤어스타일, 눈·코·입·턱선, 나이, 고유 마커, 인식 가능한 닮음이 명시되어 있는가? 해당 시 필수다."
+    rationale: "인물 identity 단서를 반복 고정하지 않으면 참조 이미지가 있어도 얼굴 평균화와 identity drift가 생긴다."
+    failure_examples:
+      - "같은 사람처럼."
+      - "참조 이미지의 인물 유지."
+  - id: image-reference-roles
+    category: 참고이미지
+    question: "참고이미지가 있는 경우 각 이미지가 Identity, Pose, Style, Lighting, Environment 중 무엇을 제어하고 무엇을 제어하지 않는지 선언했는가? 해당 시 필수다."
+    rationale: "참고이미지 역할을 분리해야 스타일 참조가 얼굴을 바꾸거나 포즈 참조가 배경을 덮어쓰지 않는다."
+    failure_examples:
+      - "첨부 이미지를 참고해줘."
+      - "이미지 1과 비슷하게 만들어줘."
+  - id: image-edit-change-preserve-constraints
+    category: 편집
+    question: "편집 요청인 경우 Change, Preserve, Constraints가 분리되어 있고 보존 대상에 얼굴, 로고, 텍스트, 레이아웃, 조명, 프레임 등 핵심 요소가 포함되어 있는가? 해당 시 필수다."
+    rationale: "변경과 보존을 분리해야 필요한 영역만 바뀌고 누적 편집 드리프트를 막을 수 있다."
+    failure_examples:
+      - "배경만 바꾸고 나머지는 알아서 유지."
+      - "더 좋게 수정해줘."
+  - id: image-no-generic-language
+    category: 구체성
+    question: "멋진, 예쁜, 프리미엄 느낌, 고품질 같은 제너릭 표현만으로 판단을 모델에 떠넘기는 문장이 제거되었는가?"
+    rationale: "제너릭 표현은 평가 가능한 기준이 없어 자가채점 게이트에서 실패 원인을 추적하기 어렵다."
+    failure_examples:
+      - "멋진 광고 이미지."
+      - "고급스럽고 감각적인 분위기."
+  - id: image-marketing-layout
+    category: 마케팅 요소
+    question: "제품·브랜드·광고 이미지인 경우 제품 형태와 라벨, 카피 여백, 헤드라인 위치, 로고·라벨 보존, 불필요한 장식 금지가 지정되어 있는가? 해당 시 필수다."
+    rationale: "마케팅 결과물은 제품 가시성과 카피 배치가 목적이므로 미리 여백과 브랜드 자산 안정성을 고정해야 한다."
+    failure_examples:
+      - "제품을 돋보이게."
+      - "광고 배너처럼 예쁘게."
+  - id: image-output-scope
+    category: 산출 범위
+    question: "요청한 이미지 범위 밖의 추가 인물, 추가 제품, 임의 배경 이야기, 임의 텍스트가 생기지 않도록 범위가 닫혀 있는가?"
+    rationale: "산출 범위를 닫아야 모델이 장면을 과도하게 확장하지 않고 목적에 맞는 단일 결과를 만든다."
+    failure_examples:
+      - "주변을 풍성하게 채워줘."
+      - "필요하면 소품을 알아서 추가."

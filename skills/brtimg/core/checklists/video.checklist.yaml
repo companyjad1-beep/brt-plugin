@@ -1,0 +1,111 @@
+schemaVersion: 1
+target: video
+verdicts: [충족, 부분 충족, 미달, 판정 불가]
+passCondition: "적용 대상 항목 전부 충족이어야 합격. '해당 시' 항목은 해당하지 않으면 '판정 불가'가 아니라 제외"
+scoringScope: "finalText만 단독 채점하지 않고 prompt 파일 전체(referenceImagePaths, characterSheetRef 포함) 기준으로 채점"
+items:
+  - id: video-six-step-order
+    category: 구조
+    question: "프롬프트가 Subject → Action → Environment → Camera → Style → Constraints의 6단계 순서를 지키는가?"
+    rationale: "Seedance 2.0은 감독 지시처럼 피사체, 동작, 환경, 카메라, 스타일, 제약을 순서대로 고정할 때 안정적이다."
+    failure_examples:
+      - "시네마틱하게, 카메라가 움직이고 여자가 제품을 들고 좋은 배경."
+      - "제약과 스타일을 먼저 쓰고 피사체를 나중에 설명."
+  - id: video-subject-identity
+    category: 피사체
+    question: "Subject에 누구 또는 무엇인지와 유지해야 할 정체성 특징이 먼저 고정되어 있는가?"
+    rationale: "피사체 정체성이 앞에서 잠기지 않으면 샷 중 얼굴, 의상, 제품 외형이 흔들릴 수 있다."
+    failure_examples:
+      - "한 여성이 등장한다."
+      - "제품이 보인다."
+  - id: video-visible-action
+    category: 행동
+    question: "Action이 감정어가 아니라 손, 시선, 어깨, 옷감, 제품 움직임처럼 화면에 보이는 동작으로 쓰였는가?"
+    rationale: "영상 모델은 보이는 변화에 반응하므로 추상 감정보다 물리적으로 관찰 가능한 동작이 필요하다."
+    failure_examples:
+      - "행복하고 우아한 느낌."
+      - "브랜드 감성을 표현한다."
+  - id: video-environment-light-time
+    category: 환경
+    question: "Environment에 장소, 시간대, 조명, 날씨 또는 배경 밀도가 필요한 만큼 포함되어 있는가?"
+    rationale: "환경 정보는 조명 일관성과 배경 안정성을 결정하며 피사체 움직임의 물리 맥락을 제공한다."
+    failure_examples:
+      - "좋은 장소에서."
+      - "밝은 분위기."
+  - id: video-single-camera-movement
+    category: 카메라
+    question: "Camera에 샷 크기와 카메라 무브먼트 1개, 앵글 또는 렌즈 느낌이 포함되어 있는가?"
+    rationale: "한 샷에 카메라 움직임을 하나만 두어야 상충 지시와 흔들림을 줄일 수 있다."
+    failure_examples:
+      - "카메라가 밀고 들어가며 좌우로 팬하고 위로 틸트한다."
+      - "역동적인 카메라워크."
+  - id: video-camera-subject-separation
+    category: 카메라와 동작 분리
+    question: "카메라 움직임과 피사체 움직임이 별도 문장 또는 별도 구문으로 분리되어 있는가?"
+    rationale: "카메라와 피사체 동작을 분리해야 모델이 어떤 움직임을 어디에 적용할지 혼동하지 않는다."
+    failure_examples:
+      - "여성이 돌면서 카메라도 같이 빠르게 돌아간다."
+      - "카메라와 인물이 역동적으로 움직인다."
+  - id: video-no-fast-keyword
+    category: 금기어
+    question: "품질 저하 위험 키워드인 fast가 사용되지 않았는가?"
+    rationale: "fast는 피사체, 카메라, 배경 움직임의 복잡도를 높여 jitter와 motion blur 위험을 키운다."
+    failure_examples:
+      - "fast zoom in."
+      - "fast camera movement with quick action."
+  - id: video-duration-aspect-ratio
+    category: 출력 조건
+    question: "영상 길이와 화면비가 명시되어 있는가?"
+    rationale: "길이와 화면비는 샷 구조, 카피 여백, 피사체 비율을 제어하는 기본 출력 조건이다."
+    failure_examples:
+      - "짧은 영상."
+      - "소셜 미디어용 클립."
+  - id: video-multishot-anchors
+    category: 멀티샷
+    question: "멀티샷 또는 타임라인이 필요한 경우 [0s], [3s], [6s] 같은 2–3개 앵커나 Shot 1/2/3 구조로 각 비트를 제한했는가? 해당 시 필수다."
+    rationale: "5–8초 클립은 2–3개 서사 앵커가 충분하며 촘촘한 타임코드는 흔들림을 만든다."
+    failure_examples:
+      - "매초마다 새로운 동작과 카메라 전환을 지시."
+      - "여러 장면을 한 문단에 섞어 작성."
+  - id: video-reference-roles
+    category: 참조 파일
+    question: "@Image, @Video, @Audio 참조가 있는 경우 각 참조가 identity, environment, camera rhythm, action rhythm, dialogue, ambience 중 무엇을 제어하고 무엇은 제어하지 않는지 선언했는가? 해당 시 필수다."
+    rationale: "참조 역할을 분리해야 영상 참조가 identity를 덮어쓰거나 오디오 참조가 새 대사를 만들지 않는다."
+    failure_examples:
+      - "@Image와 @Video를 참고."
+      - "참조와 비슷하게 만들어줘."
+  - id: video-negative-bundle
+    category: 네거티브 제약
+    question: "Constraints에 jitter, 얼굴 변형, bent limbs, blur, ghosting, flickering, subtitles, logo, watermark 등 핵심 결함 금지가 묶여 있는가?"
+    rationale: "영상 결함은 샷 전체 품질을 무너뜨리므로 끝부분에 직접적인 네거티브 묶음이 필요하다."
+    failure_examples:
+      - "이상하지 않게."
+      - "깨끗한 결과."
+  - id: video-quality-cues
+    category: 품질 큐
+    question: "sharp clarity, high detail, stable picture, clean motion, natural lighting 같은 품질 cue가 포함되어 있고 4K 해상도 주장은 사용하지 않았는가?"
+    rationale: "품질 cue는 선명도와 안정성을 돕지만 4K 같은 해상도 주장은 검증 불가한 과장 지시가 될 수 있다."
+    failure_examples:
+      - "4K ultra cinematic masterpiece."
+      - "최고 품질로 알아서."
+  - id: video-audio-instructions
+    category: 오디오
+    question: "오디오가 필요한 경우 대사, 발화 속도, 감정, 호흡, 립싱크, 환경음, 폴리 또는 사운드 질감이 지정되어 있는가? 해당 시 필수다."
+    rationale: "Seedance 2.0은 오디오-비디오 생성 흐름을 활용할 수 있으므로 오디오가 목적에 포함되면 구체 지시가 필요하다."
+    failure_examples:
+      - "배경음 넣어줘."
+      - "대사를 자연스럽게."
+  - id: video-character-consistency
+    category: 인물 일관성
+    question: "인물이 등장하는 경우 얼굴, 헤어스타일, 피부 톤, 체형, 의상, 표정 스타일을 전체 영상 동안 보존한다는 제약이 있는가? 해당 시 필수다."
+    rationale: "영상에서는 프레임 사이 identity drift가 발생하기 쉬우므로 인물 일관성 제약을 명시해야 한다."
+    failure_examples:
+      - "같은 사람 유지."
+      - "인물이 자연스럽게 이어짐."
+  - id: video-style-unity
+    category: 스타일
+    question: "Style이 광고, 다큐멘터리, 시네마틱, 패션 필름 등 하나의 영상 톤과 색감·질감으로 통일되어 있는가?"
+    rationale: "샷마다 다른 스타일 지시가 섞이면 멀티샷에서도 조명과 색감이 흔들린다."
+    failure_examples:
+      - "다큐멘터리이면서 뮤직비디오처럼 화려하고 영화 예고편 느낌."
+      - "스타일은 알아서 고급스럽게."

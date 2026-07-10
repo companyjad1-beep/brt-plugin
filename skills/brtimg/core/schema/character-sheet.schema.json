@@ -1,0 +1,110 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://brtimg.local/schema/character-sheet.schema.json",
+  "title": "캐릭터 시트",
+  "description": "반복 생성에서 동일 인물성을 유지하기 위한 외형, 정체성 앵커, 금지 제약을 저장하는 스키마입니다.",
+  "type": "object",
+  "required": [
+    "schemaVersion",
+    "id",
+    "name",
+    "appearance",
+    "identityAnchors",
+    "referenceImagePaths",
+    "negativeConstraints",
+    "createdAt"
+  ],
+  "properties": {
+    "schemaKind": {
+      "description": "검증 도구가 스키마를 자동 추론할 때 사용할 수 있는 선택 식별자입니다.",
+      "type": "string",
+      "enum": ["character-sheet"]
+    },
+    "schemaVersion": {
+      "description": "스키마 버전입니다. 현재 버전은 1입니다.",
+      "type": "integer",
+      "const": 1
+    },
+    "id": {
+      "description": "캐릭터 시트의 안정적인 식별자입니다.",
+      "type": "string",
+      "minLength": 1
+    },
+    "name": {
+      "description": "캐릭터의 이름 또는 캠페인용 표시명입니다.",
+      "type": "string",
+      "minLength": 1
+    },
+    "appearance": {
+      "description": "인물 외형을 구성하는 핵심 시각 속성입니다.",
+      "type": "object",
+      "required": ["face", "hair", "eyes", "skin", "build", "signatureFeatures"],
+      "properties": {
+        "face": {
+          "description": "얼굴형과 인상입니다.",
+          "type": "string",
+          "minLength": 1
+        },
+        "hair": {
+          "description": "머리 모양, 색, 질감입니다.",
+          "type": "string",
+          "minLength": 1
+        },
+        "eyes": {
+          "description": "눈 모양, 색, 시선 특징입니다.",
+          "type": "string",
+          "minLength": 1
+        },
+        "skin": {
+          "description": "피부 톤과 질감입니다.",
+          "type": "string",
+          "minLength": 1
+        },
+        "build": {
+          "description": "체형과 자세의 기본 인상입니다.",
+          "type": "string",
+          "minLength": 1
+        },
+        "signatureFeatures": {
+          "description": "동일 인물성을 고정하는 대표 특징 목록입니다.",
+          "type": "array",
+          "items": { "type": "string" }
+        }
+      }
+    },
+    "identityAnchors": {
+      "description": "생성 반복 사이에서 반드시 유지할 정체성 앵커 목록입니다.",
+      "type": "array",
+      "minItems": 1,
+      "items": { "type": "string" }
+    },
+    "referenceImagePaths": {
+      "description": "캐릭터 참조 이미지 경로 목록입니다.",
+      "type": "array",
+      "items": { "type": "string" }
+    },
+    "negativeConstraints": {
+      "description": "캐릭터 일관성을 해치는 표현을 막기 위한 금지 제약 목록입니다.",
+      "type": "array",
+      "items": { "type": "string" }
+    },
+    "wardrobeDefaults": {
+      "description": "별도 지시가 없을 때 사용할 기본 의상 목록입니다.",
+      "type": "array",
+      "items": { "type": "string" }
+    },
+    "voiceTone": {
+      "description": "캐릭터 설명이나 대사에 사용할 기본 어조입니다.",
+      "type": "string"
+    },
+    "notes": {
+      "description": "운영자가 남기는 추가 메모입니다.",
+      "type": "string"
+    },
+    "createdAt": {
+      "description": "파일을 생성한 시각의 ISO 8601 문자열입니다.",
+      "type": "string",
+      "minLength": 1
+    }
+  }
+}

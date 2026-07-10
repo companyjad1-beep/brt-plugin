@@ -1,0 +1,13 @@
+{
+  "name": "brt-marketplace",
+  "owner": {
+    "name": "brt"
+  },
+  "plugins": [
+    {
+      "name": "brt",
+      "source": "./",
+      "description": "브라이트 툴킷: /brt:kickoff → /brt:write|polish|check|voice → /brt:img-* → /brt:store-shots — 사업 정의부터 글·이미지·스토어 출시 자산까지"
+    }
+  ]
+}

@@ -1,0 +1,577 @@
+#!/usr/bin/env node
+// 축 선택형 샷 스펙 / 인물 커스터마이징 브리프 빌더.
+// 축 카탈로그의 원본은 core/prompts/shot-spec.md 와 core/prompts/appearance-catalog.md 다.
+// 카탈로그 문서를 수정하면 이 파일의 데이터도 함께 동기화한다.
+import fs from 'node:fs/promises';
+import path from 'node:path';
+import { pathToFileURL } from 'node:url';
+import { parseYaml } from './validate.mjs';
+
+const DEFAULT_OUT = 'workspace/builder.html';
+const CHARACTER_DIR = path.resolve('workspace/characters');
+
+// ---------- 장면 축 카탈로그 (shot-spec.md §3) ----------
+const SCENE_GROUPS = [
+  {
+    id: 'frame', label: '프레임', axes: [
+      { id: 'aspect', label: '방향·종횡비', options: ['세로 9:16', '세로 4:5', '세로 3:4', '세로 2:3', '정방형 1:1', '가로 4:3', '가로 3:2', '가로 16:9', '가로 2.39:1 시네마스코프'] },
+      { id: 'shotSize', label: '샷 사이즈', options: ['극단적 클로즈업(ECU)', '클로즈업(CU)', '반신 클로즈업·바스트 샷', '미디엄 클로즈업(MCU)', '미디엄 샷(MS)', '미디엄 롱 샷(MLS)', '롱 샷(LS)', '익스트림 롱 샷(ELS)'] },
+      { id: 'placement', label: '인물 배치', options: ['정중앙', '중앙보다 약간 왼쪽', '중앙보다 약간 오른쪽', '좌 1/3', '우 1/3', '하단 1/3', '대각 배치'] },
+      { id: 'space', label: '여백', options: ['타이트 헤드룸', '클린 헤드룸', '넉넉한 헤드룸', '리드룸(시선 방향 앞 공간)', '카피 여백 좌', '카피 여백 우', '카피 여백 상', '네거티브 스페이스 강조'] },
+      { id: 'compDevice', label: '구도 장치', options: ['삼분법', '중앙 대칭', '황금비', '리딩 라인', '대각선 구도', '삼각 구도', '프레임 인 프레임', '전경 레이어(전경 흐림)', '반사 대칭(수면·거울)', '실루엣', '비네팅 중앙 집중'] }
+    ]
+  },
+  {
+    id: 'camera', label: '카메라', axes: [
+      { id: 'bearing', label: '방위', options: ['정면', '전면 사선(3/4 프론트)', '측면(프로필)', '후면 사선(3/4 백)', '정후면'] },
+      { id: 'height', label: '높이', options: ['지면 레벨', '무릎', '허리', '가슴', '눈높이', '머리 위'] },
+      { id: 'angle', label: '앵글', options: ['웜즈아이(극단 로우)', '로우 앵글', '살짝 로우(턱선 아래)', '아이레벨', '살짝 하이(이마 위)', '하이 앵글', '오버헤드·탑샷', '버즈아이(수직 부감)', '더치 앵글 약(5~10도)', '더치 앵글 강(20도+)', '오버 더 숄더(OTS)', 'POV', '거울·반사 시점'] },
+      { id: 'lens', label: '렌즈 느낌', options: ['초광각·피시아이', '24mm 와이드', '35mm 라이프스타일', '50mm 노멀', '85mm 인물(배경 압축)', '135mm+ 망원 압축', '마크로(접사)', '아나모픽'] },
+      { id: 'distance', label: '거리감', options: ['밀착(프레임 꽉 참)', '표준', '관찰자 거리'] }
+    ]
+  },
+  {
+    id: 'subject', label: '피사체', axes: [
+      { id: 'bodyDir', label: '몸 방향', options: ['정면', '3/4', '측면', '후면 사선', '정후면'] },
+      { id: 'faceDir', label: '얼굴 방향', options: ['몸과 동일', '렌즈 쪽으로 돌림(돌아보기)', '프로필 유지', '아래로', '위로'] },
+      { id: 'gaze', label: '시선', options: ['렌즈 직시', '카메라를 살짝 비껴봄', '오프카메라 좌', '오프카메라 우', '아래(다운캐스트)', '위로', '감은 눈', '제품·소품 응시', '화면 밖 원경'] },
+      { id: 'pose', label: '자세·손', options: ['팔짱', '턱 괴기', '제품 들기(라벨 정면)', '주머니 손', '걷는 중', '앉음', '기대기', '머리카락 넘기기', '옷깃·소매 정리', '컵·소품 감싸쥐기', '어깨 너머 돌아서기', '양손 모으기'] }
+    ]
+  },
+  {
+    id: 'light', label: '조명', axes: [
+      { id: 'keyDir', label: '키 방향', options: ['좌상(10~11시)', '우상(1~2시)', '정면', '측면 좌(9시)', '측면 우(3시)', '후면(5~7시)', '바로 위', '아래에서'] },
+      { id: 'pattern', label: '패턴', options: ['플랫', '버터플라이·파라마운트', '클램셸', '루프', '렘브란트', '스플릿'] },
+      { id: 'patternMod', label: '패턴 수정자', options: ['브로드(카메라 쪽 밝게)', '쇼트(먼 쪽 밝게·갸름)'] },
+      { id: 'quality', label: '광질', options: ['하드', '소프트', '확산'] },
+      { id: 'aux', label: '보조광', options: ['필 강', '필 약', '림 라이트', '백라이트·헤어라이트', '언더라이트', '실용광', '모티베이티드(창문 등)', '없음'] },
+      { id: 'keyTone', label: '키·대비', options: ['하이키·낮은 대비', '하이키·중간 대비', '미드', '로우키·높은 대비', '로우키·치아로스쿠로'] },
+      { id: 'colorTemp', label: '색온도·시간대', options: ['웜(텅스텐)', '뉴트럴 주광', '쿨', '골든아워', '블루아워', '정오 직사', '흐린 날 확산', '야간 네온·가로등', '창가 자연광', '촛불·모닥불', '믹스드(웜 키+쿨 배경)'] },
+      { id: 'highlight', label: '하이라이트 성격', options: ['둥글고 부드러운 스펙큘러', '날카로운 스펙큘러', '크림빛 브로드 하이라이트'] }
+    ]
+  },
+  {
+    id: 'finish', label: '마감', axes: [
+      { id: 'focusPriority', label: '초점 우선순위', text: true, placeholder: '예: 눈 > 안경 > 입술 > 어깨 > 귀·배경' },
+      { id: 'dof', label: '심도', options: ['극얕은(눈만 선명)', '얕은(배경 분리)', '중간', '깊은(팬포커스)'] },
+      { id: 'focusTech', label: '초점 기법', options: ['소프트 포커스', '스플릿 디옵터', '크림 보케', '원형 보케', '아나모픽 타원 보케'] },
+      { id: 'palette', label: '팔레트', options: ['웜 톤', '쿨 팔레트', '뉴트럴', '파스텔', '저채도(뮤티드)', '모노크롬·흑백', '세피아', '틸 앤 오렌지', '핑크-그레이', '크림·아이보리', '브랜드 컬러(기타에 입력)'] },
+      { id: 'grain', label: '그레인·매체감', options: ['무그레인 디지털 클린', '미세 그레인', '35mm 필름', '중형 포맷 룩', '폴라로이드', '빈티지 프린트', 'CCD 디지털캠(2000년대)', 'VHS·8mm 홈비디오'] },
+      { id: 'styleTexture', label: '스타일 질감', options: ['상업 화보(커머셜)', '에디토리얼', '다큐멘터리', 'UGC·폰카', '시네마틱 스틸', '일러스트레이션', '아이돌 화보', '스트리트 스냅', '필름 누아르'] },
+      { id: 'surface', label: '마감', options: ['매트', '세미글로시', '글로시'] }
+    ]
+  },
+  {
+    id: 'bg', label: '배경·환경', axes: [
+      { id: 'bgType', label: '유형', options: ['단색 시임리스', '그라데이션 벽', '스튜디오 세트', '실내 실장소', '야외', '추상 텍스처', '보케 라이트(야경 불빛)', '커튼·패브릭', '식물·플로럴'] },
+      { id: 'bgDensity', label: '밀도', options: ['완전 미니멀', '소품 1~2개', '생활감', '복잡한 환경'] },
+      { id: 'bgTreat', label: '처리', options: ['선명', '흐림(보케)', '실루엣화'] }
+    ]
+  },
+  {
+    id: 'negative', label: '네거티브(피할 것)', axes: [
+      { id: 'negatives', label: '선택(복수 가능)', multi: true, options: ['과한 샤프닝', '하드 섀도우', '복잡한 배경', '진한 메이크업', '얼굴 왜곡', '기름진 번들거림', '고대비', '손 왜곡', '추가 인물', '워터마크·텍스트', '플라스틱 피부', '과노출', '색수차', '치아 보임'] }
+    ]
+  }
+];
+
+// ---------- 영상 전용 축 (shot-spec.md §4) ----------
+const VIDEO_GROUPS = [
+  {
+    id: 'motion', label: '영상 전용', video: true, axes: [
+      { id: 'camMove', label: '카메라 움직임(주 1개)', options: ['고정(스태틱)', '팬', '윕 팬', '틸트', '달리 인(푸시인)', '달리 아웃', '트럭·크랩', '페데스탈', '트래킹', '아크·오빗', '크레인·붐', '에어리얼·드론', '핸드헬드', '스테디캠·짐벌', '줌', '돌리 줌(베르티고)', '랙 포커스'] },
+      { id: 'moveSpeed', label: '움직임 속도', options: ['아주 느리게(subtle)', '느리게', '보통', '빠르게'] },
+      { id: 'rhythm', label: '리듬', options: ['일정', '점진 가속', '점진 감속'] },
+      { id: 'subjectMotion', label: '피사체 동작', options: ['정지(포즈 유지)', '미세 동작(머리카락·눈 깜빡임)', '손 동작(제품 시연)', '걷기·회전', '카메라를 향해 돌아봄'] },
+      { id: 'timeFx', label: '시간 조작', options: ['실시간', '슬로모션', '타임랩스', '스피드 램프'] },
+      { id: 'shotStruct', label: '샷 구조', text: true, placeholder: '예: 5초, 시작: 프로필 → 중간: 돌아봄 → 끝: 렌즈 응시, 루프 아님' }
+    ]
+  }
+];
+
+// ---------- 인물 커스터마이징 축 (appearance-catalog.md §3) ----------
+const CHAR_GROUPS = [
+  {
+    id: 'sheetgen', label: '턴어라운드 시트 프롬프트', axes: [
+      { id: 'sheetSource', label: '인물 소스', options: ['새 인물(아래 축 선택·서술)', '기존 이미지(@ref1 첨부)'] },
+      { id: 'sheetGenerator', label: '생성기 — 선택하면 우측 브리프가 시트 생성 프롬프트로 바뀜', options: ['gpt-image-2', 'nano-banana-pro'] }
+    ]
+  },
+  {
+    id: 'skeleton', label: '골격', axes: [
+      { id: 'age', label: '나이대', options: ['10대 후반', '20대 초반', '20대 중반', '20대 후반', '30대 초반', '30대 중반', '30대 후반', '40대', '50대+'] },
+      { id: 'faceShape', label: '얼굴형', options: ['계란형(oval)', '둥근형(round)', '각진형(square)', '하트형(heart)', '다이아몬드형(diamond)', '긴형(oblong)', '삼각형(triangle)'] },
+      { id: 'cheek', label: '광대', options: ['부드럽게 살아 있음', '도드라짐', '평평함'] },
+      { id: 'jaw', label: '턱선', options: ['갸름한 V라인', '부드러운 곡선', '각진 직선', '뾰족한 턱'] },
+      { id: 'build', label: '체형', options: ['마른', '슬림 탄탄', '중간 균형', '곡선형', '근육형', '통통한'] },
+      { id: 'heightFeel', label: '키 느낌', options: ['작음', '중간', '큼'] },
+      { id: 'posture', label: '자세', options: ['곧은', '편안한', '당당한'] }
+    ]
+  },
+  {
+    id: 'features', label: '이목구비', axes: [
+      { id: 'eyeShape', label: '눈 형태', options: ['아몬드', '둥근 눈', '후디드', '무쌍(monolid)', '올라간 눈꼬리(캣아이)', '처진 눈꼬리', '깊은 눈', '돌출 눈', '몰린 눈', '벌어진 눈'] },
+      { id: 'eyeColor', label: '눈동자 색', options: ['짙은 갈색', '갈색', '헤이즐', '검정', '회갈색', '블루', '그린'] },
+      { id: 'eyeSize', label: '눈 크기', options: ['큰 눈', '중간', '작은 눈'] },
+      { id: 'lash', label: '속눈썹', options: ['선명함', '자연스러움'] },
+      { id: 'underEye', label: '언더아이', options: ['부드러움(애교살)', '매끈함'] },
+      { id: 'brow', label: '눈썹', options: ['일자', '아치형', '부드러운 곡선', '짙음', '옅음'] },
+      { id: 'nose', label: '코', options: ['콧대 곧음', '낮고 부드러움', '오똑함', '둥근 코끝', '콧등 주근깨'] },
+      { id: 'lipShape', label: '입술 형태', options: ['도톰(full)', '하트형(중앙 도톰)', '얇은', '둥근', '보우형(큐피드 보우)', '아랫입술 도톰'] },
+      { id: 'lipFinish', label: '입술 마감', options: ['매트', '글로시·젤리 하이라이트', '자연스러운 촉촉함'] },
+      { id: 'lipColor', label: '입술 색', options: ['누드 베이지', '핑크 베이지', '로즈', '코랄', '레드', '그라데이션'] }
+    ]
+  },
+  {
+    id: 'skinHair', label: '피부·헤어', axes: [
+      { id: 'skinTone', label: '피부 톤', options: ['밝고 반투명', '밝은 웜', '라이트 미디엄', '미디엄', '태닝', '딥'] },
+      { id: 'undertone', label: '언더톤', options: ['웜', '쿨', '뉴트럴'] },
+      { id: 'skinTexture', label: '피부 질감', options: ['자연 결·모공 보임', '매끄럽고 정제됨(모공 최소)', '촉촉 광', '세미매트', '주근깨', '홍조'] },
+      { id: 'hairLen', label: '헤어 길이', options: ['숏컷', '단발(턱선)', '어깨 길이', '어깨 아래', '롱', '매우 긴'] },
+      { id: 'hairCurl', label: '컬 타입', options: ['생머리(Type 1)', '웨이브(Type 2)', '컬리(Type 3)', '코일리(Type 4)'] },
+      { id: 'hairColor', label: '컬러', options: ['블랙', '블루블랙', '다크브라운', '브라운', '로즈브라운', '애쉬', '블론드', '하이라이트·발레아쥬', '비비드'] },
+      { id: 'hairStyle', label: '스타일', options: ['풀어 내림', '낮은 포니테일', '높은 포니테일', '번(묶음)', '하프업', '땋음', '올림머리'] },
+      { id: 'parting', label: '가르마·앞머리', options: ['가운데 가르마', '옆 가르마', '시스루 뱅', '풀 뱅', '이마 노출'] },
+      { id: 'babyHair', label: '잔머리', options: ['볼선 따라 얇게 내려옴', '정돈됨', '자연스럽게 흐트러짐'] }
+    ]
+  },
+  {
+    id: 'markers', label: '마커·마감', axes: [
+      { id: 'marks', label: '고유 마커(복수, 위치 명시 권장)', multi: true, options: ['왼쪽 볼 점', '오른쪽 볼 점', '입가 점', '눈가 점', '눈밑 점', '목 점', '콧등 주근깨', '볼 주근깨', '보조개', '치아 틈'] },
+      { id: 'glasses', label: '안경', options: ['없음', '얇은 금속 원형', '얇은 금속 타원·사각 혼합', '뿔테', '반무테', '캣아이'] },
+      { id: 'accessories', label: '액세서리(복수)', multi: true, options: ['스터드 귀걸이', '링 귀걸이', '드롭 귀걸이', '목걸이', '헤어핀', '시계', '안경 체인', '피어싱', '스카프'] },
+      { id: 'wardrobe', label: '기본 의상', text: true, placeholder: '예: 아이보리 니트 카디건, 베이지 린넨 셔츠' },
+      { id: 'impression', label: '인상 키워드', options: ['차분한 자신감', '신뢰감', '활기', '고급스러움', '차갑고 절제됨', '친근함'] }
+    ]
+  }
+];
+
+// ---------- 턴어라운드 시트 템플릿 (core/prompts/turnaround-sheet.md §3·§4와 동기화) ----------
+const TURNAROUND_TEMPLATES = {
+  'gpt-image-2': '캐릭터 턴어라운드 참조 시트, 단일 이미지 안에 7분할 그리드. 배경은 전 패널 공통 밝은 아이보리 시임리스, 그림자 최소, 균일한 소프트 확산광(5600K), 패널 간 조명·색 완전 동일.\n\n상단 행(전신 4패널, 좌→우): 정면 / 좌측 프로필 / 우측 프로필 / 정후면. 전신이 머리부터 발끝까지 보이고 4패널 모두 같은 크기·같은 카메라 높이(가슴)·같은 거리.\n하단 행(얼굴 3패널, 좌→우): 정면 클로즈업(어깨 위) / 좌측 프로필 클로즈업 / 후면 3/4 클로즈업. 얼굴이 패널 높이의 70% 이상을 차지하도록 크게.\n\n인물(모든 패널에서 완전히 동일 인물):\n[인물 서술]\n\n의상: [의상], 맨발, 액세서리는 인물 서술에 포함된 것만. 자세: 팔을 옆에 둔 이완 기립, 포즈 변형 금지. 표정: 중립, 입 다묾, 정면 패널만 카메라 응시.\n\n품질: 실사 인물 사진 질감, 피부 결·모공 유지, 보정 없음, 7패널 전부에서 얼굴 기하·헤어·피부 톤 완전 일치.\n금지: 패널 간 인물 변화, 포즈 변형, 소품, 텍스트·라벨·워터마크, 배경 요소, 잘린 신체, 패널 수 증감.',
+  'nano-banana-pro': 'Character turnaround reference sheet — one single image, a 7-panel grid, the identical person in every panel.\n\nLayout: top row, four full-body panels left to right: front / left profile / right profile / back. Same camera height (chest level), same distance, same scale, head-to-toe visible. Bottom row, three face panels left to right: front close-up (shoulders up) / left profile close-up / three-quarter back close-up. The face fills at least 70% of panel height.\n\nGlobal conditions: seamless light-ivory backdrop in all panels, even soft diffuse light at 5600K, minimal shadows, zero lighting or color variation between panels.\n\nIdentity (must be pixel-consistent across all seven panels):\n[인물 서술]\n\nWardrobe: [의상], barefoot, only accessories defined in the identity block. Pose: relaxed standing, arms at sides, no pose variation. Expression: neutral, mouth closed, eye contact in the front panels only.\n\nQuality: photoreal skin with visible texture and pores, no retouching, identical face geometry, hair, and skin tone in every panel.\n Hard negative: no identity variation between panels, no pose changes, no props, no text or watermark, no background elements, no cropped limbs, no extra or missing panels.'
+};
+
+async function main() {
+  const outPath = path.resolve(parseArgs(process.argv.slice(2)).out);
+  const characters = await scanCharacters();
+  const html = renderHtml(characters);
+  await fs.mkdir(path.dirname(outPath), { recursive: true });
+  await fs.writeFile(outPath, html, 'utf8');
+  console.log(`캐릭터 시트: ${characters.length}개`);
+  console.log(`생성 경로: ${path.relative(process.cwd(), outPath).replaceAll('\\', '/')}`);
+  console.log(`브라우저로 열기: ${pathToFileURL(outPath).href}`);
+}
+
+function parseArgs(argv) {
+  let out = DEFAULT_OUT;
+  for (let i = 0; i < argv.length; i += 1) {
+    const arg = argv[i];
+    if (arg === '--out') {
+      if (i + 1 >= argv.length) throw new Error('--out 뒤에 생성 경로가 필요합니다.');
+      out = argv[i + 1];
+      i += 1;
+    } else if (arg.startsWith('--out=')) {
+      out = arg.slice('--out='.length);
+    } else {
+      throw new Error(`알 수 없는 옵션입니다: ${arg}`);
+    }
+  }
+  return { out };
+}
+
+async function scanCharacters() {
+  const result = [];
+  let entries;
+  try {
+    entries = await fs.readdir(CHARACTER_DIR, { withFileTypes: true });
+  } catch {
+    return result;
+  }
+  for (const entry of entries) {
+    if (!entry.isFile() || !['.yaml', '.yml'].includes(path.extname(entry.name).toLowerCase())) continue;
+    const filePath = path.join(CHARACTER_DIR, entry.name);
+    try {
+      const data = parseYaml(await fs.readFile(filePath, 'utf8'));
+      result.push({
+        path: `workspace/characters/${entry.name}`,
+        name: typeof data?.name === 'string' ? data.name : entry.name,
+        id: typeof data?.id === 'string' ? data.id : ''
+      });
+    } catch {
+      result.push({ path: `workspace/characters/${entry.name}`, name: entry.name, id: '' });
+    }
+  }
+  return result;
+}
+
+function renderHtml(characters) {
+  const data = JSON.stringify({
+    sceneGroups: SCENE_GROUPS,
+    videoGroups: VIDEO_GROUPS,
+    charGroups: CHAR_GROUPS,
+    turnaroundTemplates: TURNAROUND_TEMPLATES,
+    characters
+  }).replaceAll('</', '<\\/');
+
+  return `<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>brtimg 브리프 빌더</title>
+  <style>
+    :root {
+      color-scheme: dark;
+      --bg: #0f1117; --panel: #171b24; --panel-2: #202636; --text: #edf1f7;
+      --muted: #9ba7b7; --line: #303849; --accent: #7aa2ff; --warn: #ffcf8d; --focus: #b6c8ff;
+    }
+    * { box-sizing: border-box; }
+    body { margin: 0; min-height: 100vh; background: var(--bg); color: var(--text); font-family: system-ui, -apple-system, "Segoe UI", sans-serif; line-height: 1.5; }
+    header { position: sticky; top: 0; z-index: 2; border-bottom: 1px solid var(--line); background: rgba(15,17,23,0.96); padding: 16px clamp(16px, 4vw, 40px); backdrop-filter: blur(12px); }
+    h1 { margin: 0 0 4px; font-size: clamp(20px, 3vw, 28px); }
+    .subtitle { margin: 0; color: var(--muted); font-size: 13px; }
+    main { display: grid; grid-template-columns: minmax(0, 1fr) minmax(320px, 440px); gap: 20px; padding: 20px clamp(16px, 4vw, 40px); align-items: start; }
+    @media (max-width: 900px) { main { grid-template-columns: 1fr; } }
+    button { border: 1px solid var(--line); border-radius: 999px; background: var(--panel); color: var(--text); font: inherit; font-size: 13px; padding: 7px 13px; cursor: pointer; }
+    button:focus-visible, input:focus-visible, textarea:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
+    button[aria-pressed="true"] { background: var(--accent); border-color: var(--accent); color: #0f1117; font-weight: 600; }
+    .tabs { display: flex; gap: 8px; margin-top: 12px; }
+    .tabs button { border-radius: 10px; }
+    .group { border: 1px solid var(--line); border-radius: 14px; background: var(--panel); padding: 14px 16px; margin-bottom: 14px; }
+    .group h2 { margin: 0 0 10px; font-size: 15px; }
+    .axis { margin-bottom: 12px; }
+    .axis-label { color: var(--muted); font-size: 13px; margin-bottom: 6px; }
+    .opts { display: flex; flex-wrap: wrap; gap: 6px; }
+    input[type="text"], textarea { width: 100%; border: 1px solid var(--line); border-radius: 10px; background: var(--panel-2); color: var(--text); font: inherit; font-size: 13px; padding: 9px 12px; }
+    .etc-input { margin-top: 6px; padding: 7px 12px !important; font-size: 12.5px !important; color: var(--muted); }
+    .etc-input:not(:placeholder-shown) { color: var(--text); border-color: var(--accent); }
+    aside { position: sticky; top: 88px; border: 1px solid var(--line); border-radius: 14px; background: var(--panel); padding: 16px; }
+    aside h2 { margin: 0 0 8px; font-size: 15px; }
+    #warnings { color: var(--warn); font-size: 13px; white-space: pre-wrap; margin-bottom: 8px; }
+    #brief { min-height: 320px; white-space: pre-wrap; font-family: ui-monospace, Consolas, monospace; font-size: 12.5px; }
+    .actions { display: flex; gap: 8px; margin-top: 10px; }
+    .actions button { border-radius: 10px; }
+    #copyStatus { color: var(--muted); font-size: 13px; align-self: center; }
+    .hidden { display: none; }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>brtimg 브리프 빌더</h1>
+    <p class="subtitle">축을 선택하면 브리프가 만들어집니다. 선택하지 않은 축은 패스(하네스 판단)입니다. 브리프를 복사해 /brtimg:build 또는 /brtimg:character 에 붙여넣으세요.</p>
+    <div class="tabs" role="tablist">
+      <button type="button" id="tabScene" aria-pressed="true">장면 스펙</button>
+      <button type="button" id="tabChar" aria-pressed="false">인물 커스터마이징</button>
+    </div>
+  </header>
+  <main>
+    <section id="panels"></section>
+    <aside>
+      <h2>브리프</h2>
+      <div id="warnings"></div>
+      <div id="brief"></div>
+      <div class="actions">
+        <button type="button" id="copyBtn">브리프 복사</button>
+        <button type="button" id="resetBtn">전체 초기화</button>
+        <span id="copyStatus"></span>
+      </div>
+    </aside>
+  </main>
+  <script type="application/json" id="builder-data">${data}</script>
+  <script>
+    const DATA = JSON.parse(document.getElementById('builder-data').textContent);
+    const state = { tab: 'scene', media: 'image', character: null, scene: {}, char: {} };
+    const panels = document.getElementById('panels');
+
+    document.getElementById('tabScene').addEventListener('click', () => setTab('scene'));
+    document.getElementById('tabChar').addEventListener('click', () => setTab('char'));
+    document.getElementById('copyBtn').addEventListener('click', copyBrief);
+    document.getElementById('resetBtn').addEventListener('click', () => {
+      if (state.tab === 'scene') { state.scene = {}; state.media = 'image'; state.character = null; }
+      else { state.char = {}; }
+      renderPanels(); renderBrief();
+    });
+
+    renderPanels(); renderBrief();
+
+    function setTab(tab) {
+      state.tab = tab;
+      document.getElementById('tabScene').setAttribute('aria-pressed', String(tab === 'scene'));
+      document.getElementById('tabChar').setAttribute('aria-pressed', String(tab === 'char'));
+      renderPanels(); renderBrief();
+    }
+
+    function renderPanels() {
+      panels.replaceChildren();
+      if (state.tab === 'scene') {
+        panels.appendChild(mediaGroup());
+        panels.appendChild(characterGroup());
+        for (const group of DATA.sceneGroups) panels.appendChild(groupEl(group, state.scene));
+        if (state.media === 'video') for (const group of DATA.videoGroups) panels.appendChild(groupEl(group, state.scene));
+      } else {
+        for (const group of DATA.charGroups) panels.appendChild(groupEl(group, state.char));
+      }
+    }
+
+    function mediaGroup() {
+      const wrap = groupShell('매체·생성기');
+      wrap.appendChild(axisRow('매체', ['이미지', '영상'], state.media === 'video' ? '영상' : '이미지', (value) => {
+        state.media = value === '영상' ? 'video' : 'image';
+        renderPanels(); renderBrief();
+      }, false));
+      const gens = state.media === 'video' ? ['seedance-2'] : ['gpt-image-2', 'nano-banana-pro'];
+      wrap.appendChild(axisRow('생성기', gens, state.scene.generator || null, (value) => {
+        state.scene.generator = state.scene.generator === value ? null : value;
+        renderBrief(); renderPanels();
+      }, true));
+      return wrap;
+    }
+
+    function characterGroup() {
+      const wrap = groupShell('캐릭터 시트');
+      if (DATA.characters.length === 0) {
+        const p = document.createElement('p');
+        p.className = 'axis-label';
+        p.textContent = '시트 없음 — /brtimg:character 로 먼저 만들거나 시트 없이 진행합니다.';
+        wrap.appendChild(p);
+        return wrap;
+      }
+      const labels = DATA.characters.map((c) => c.name);
+      wrap.appendChild(axisRow('선택', labels, state.character, (value) => {
+        state.character = state.character === value ? null : value;
+        renderBrief(); renderPanels();
+      }, true));
+      return wrap;
+    }
+
+    function groupShell(title) {
+      const wrap = document.createElement('div');
+      wrap.className = 'group';
+      const h = document.createElement('h2');
+      h.textContent = title;
+      wrap.appendChild(h);
+      return wrap;
+    }
+
+    function groupEl(group, store) {
+      const wrap = groupShell(group.label);
+      for (const axis of group.axes) {
+        if (axis.text) {
+          const div = document.createElement('div');
+          div.className = 'axis';
+          const label = document.createElement('div');
+          label.className = 'axis-label';
+          label.textContent = axis.label + ' (비우면 패스)';
+          const input = document.createElement('input');
+          input.type = 'text';
+          input.placeholder = axis.placeholder || '';
+          input.value = store[axis.id] || '';
+          input.addEventListener('input', () => { store[axis.id] = input.value; renderBrief(); });
+          div.appendChild(label); div.appendChild(input);
+          wrap.appendChild(div);
+        } else if (axis.multi) {
+          const current = Array.isArray(store[axis.id]) ? store[axis.id] : [];
+          const row = axisRow(axis.label, axis.options, current, (value) => {
+            const list = Array.isArray(store[axis.id]) ? store[axis.id] : [];
+            store[axis.id] = list.includes(value) ? list.filter((v) => v !== value) : list.concat(value);
+            renderBrief(); renderPanels();
+          }, true);
+          row.appendChild(etcInput(store, axis.id));
+          wrap.appendChild(row);
+        } else {
+          const row = axisRow(axis.label, axis.options, store[axis.id] || null, (value) => {
+            store[axis.id] = store[axis.id] === value ? null : value;
+            renderBrief(); renderPanels();
+          }, true);
+          row.appendChild(etcInput(store, axis.id));
+          wrap.appendChild(row);
+        }
+      }
+      return wrap;
+    }
+
+    function etcInput(store, axisId) {
+      const key = axisId + '_etc';
+      const input = document.createElement('input');
+      input.type = 'text';
+      input.className = 'etc-input';
+      input.placeholder = '기타 직접 입력 — 선택지에 없는 값 (자유 텍스트)';
+      input.value = store[key] || '';
+      input.addEventListener('input', () => { store[key] = input.value; renderBrief(); });
+      return input;
+    }
+
+    function axisRow(label, options, selected, onPick, deselectable) {
+      const div = document.createElement('div');
+      div.className = 'axis';
+      const lab = document.createElement('div');
+      lab.className = 'axis-label';
+      lab.textContent = label + (deselectable ? ' (재클릭 = 패스)' : '');
+      const row = document.createElement('div');
+      row.className = 'opts';
+      for (const option of options) {
+        const btn = document.createElement('button');
+        btn.type = 'button';
+        const active = Array.isArray(selected) ? selected.includes(option) : selected === option;
+        btn.setAttribute('aria-pressed', String(active));
+        btn.textContent = option;
+        btn.addEventListener('click', () => onPick(option));
+        row.appendChild(btn);
+      }
+      div.appendChild(lab); div.appendChild(row);
+      return div;
+    }
+
+    // shot-spec.md §5 충돌 규칙 중 정적 판정 가능한 항목
+    function checkConflicts(sel) {
+      const warnings = [];
+      const backSide = ['후면 사선(3/4 백)', '정후면'].includes(sel.bearing);
+      if (backSide && sel.gaze === '렌즈 직시' && sel.faceDir !== '렌즈 쪽으로 돌림(돌아보기)') {
+        warnings.push('규칙1: 후면 방위 + 렌즈 직시 → 얼굴 방향을 "돌아보기"로 지정해야 합니다.');
+      }
+      if (['오버헤드·탑샷', '버즈아이(수직 부감)'].includes(sel.angle) && sel.gaze === '렌즈 직시') {
+        warnings.push('규칙2: 수직 부감 + 렌즈 직시 → 목 각도가 부자연스러울 수 있습니다.');
+      }
+      const wide = ['초광각·피시아이', '24mm 와이드'].includes(sel.lens);
+      const close = ['극단적 클로즈업(ECU)', '클로즈업(CU)', '반신 클로즈업·바스트 샷'].includes(sel.shotSize);
+      if (wide && close) warnings.push('규칙3: 와이드 렌즈 + 얼굴 근접 → 왜곡 위험. 85mm 인물 렌즈를 권장합니다.');
+      if (['렘브란트', '스플릿'].includes(sel.pattern) && (sel.keyTone || '').startsWith('하이키')) {
+        warnings.push('규칙4: 드라마 패턴 + 하이키는 상충합니다. 미드~로우키를 권장합니다.');
+      }
+      if ((sel.angle || '').startsWith('더치 앵글')) warnings.push('규칙6: 더치 앵글은 제품·인물 안정성이 중요하면 지양합니다.');
+      if (state.media === 'video' && ['윕 팬', '돌리 줌(베르티고)'].includes(sel.camMove)) {
+        warnings.push('영상: 블러·왜곡형 움직임은 인물 정체성 안정성과 상충할 수 있습니다.');
+      }
+      return warnings;
+    }
+
+    function renderBrief() {
+      const briefEl = document.getElementById('brief');
+      const warnEl = document.getElementById('warnings');
+      if (state.tab === 'scene') {
+        const warnings = checkConflicts(state.scene);
+        warnEl.textContent = warnings.join('\\n');
+        briefEl.textContent = sceneBrief(warnings);
+      } else {
+        warnEl.textContent = '';
+        briefEl.textContent = charBrief();
+      }
+    }
+
+    function collect(groups, store) {
+      const lines = [];
+      for (const group of groups) {
+        const parts = [];
+        for (const axis of group.axes) {
+          const value = store[axis.id];
+          const etc = axis.text ? '' : String(store[axis.id + '_etc'] || '').trim();
+          const picked = Array.isArray(value) ? value.slice() : (value ? [value] : []);
+          if (etc) picked.push(etc);
+          if (picked.length) {
+            parts.push(axis.label + ': ' + picked.join(', '));
+          }
+        }
+        if (parts.length) lines.push('- ' + group.label + ': ' + parts.join(' / '));
+      }
+      return lines;
+    }
+
+    function sceneBrief(warnings) {
+      const sel = state.scene;
+      const lines = ['샷 스펙 브리프'];
+      lines.push('- 매체: ' + (state.media === 'video' ? '영상' : '이미지') + (sel.generator ? ' / 타깃 생성기: ' + sel.generator : ''));
+      const character = DATA.characters.find((c) => c.name === state.character);
+      lines.push('- 캐릭터: ' + (character ? character.path : '시트 없음'));
+      lines.push(...collect(DATA.sceneGroups, sel));
+      if (state.media === 'video') lines.push(...collect(DATA.videoGroups, sel));
+      lines.push('- 충돌 점검: ' + (warnings.length ? warnings.join(' | ') : '없음'));
+      lines.push('');
+      lines.push('(선택하지 않은 축은 전부 패스 — 하네스가 판단)');
+      return lines.join('\\n');
+    }
+
+    function charBrief() {
+      const gen = state.char.sheetGenerator;
+      if (gen) return turnaroundPrompt(gen);
+      const lines = ['인물 커스터마이징 브리프 (/brtimg:character description 용)'];
+      lines.push(...collect(DATA.charGroups, state.char));
+      if (lines.length === 1) lines.push('- (아직 선택 없음)');
+      lines.push('');
+      lines.push('(선택하지 않은 축은 시트에서 생략 — 추정 금지 규칙)');
+      return lines.join('\\n');
+    }
+
+    function charDescriptors() {
+      const parts = [];
+      for (const group of DATA.charGroups) {
+        if (group.id === 'sheetgen') continue;
+        for (const axis of group.axes) {
+          if (axis.id === 'wardrobe') continue;
+          const value = state.char[axis.id];
+          const etc = axis.text ? '' : String(state.char[axis.id + '_etc'] || '').trim();
+          const picked = Array.isArray(value) ? value.slice() : (value ? [value] : []);
+          if (etc) picked.push(etc);
+          parts.push(...picked);
+        }
+      }
+      return parts;
+    }
+
+    function turnaroundPrompt(gen) {
+      const existing = state.char.sheetSource === '기존 이미지(@ref1 첨부)';
+      const descriptors = charDescriptors();
+      let block;
+      if (descriptors.length) {
+        block = descriptors.join(', ');
+        if (existing) block = '@ref1과 동일 인물. 보조 앵커: ' + block;
+      } else if (existing) {
+        block = '@ref1과 동일 인물 — 정체성은 첨부한 참조 이미지가 정의한다.';
+      } else {
+        block = '[인물 축을 선택하거나 캐릭터 고정 블록을 여기에 붙여넣으세요]';
+      }
+      const wardrobe = String(state.char.wardrobe || '').trim()
+        || '몸 실루엣이 드러나는 무채색 민소매 탑과 스트레이트 팬츠';
+      let refDecl = '';
+      if (existing) {
+        refDecl = gen === 'nano-banana-pro'
+          ? 'Reference role: @ref1 = identity only. Lock face geometry, eye shape, nose, lip shape, jawline, skin tone, hairline, and hairstyle from @ref1; never copy its pose, expression, clothing, lighting, or background.\\n\\n'
+          : '참조 역할: 첨부한 이미지(@ref1)는 정체성 전용이다. 얼굴 기하, 눈코입 형태, 턱선, 피부 톤, 헤어라인과 헤어스타일을 이 이미지에서 잠그고, 포즈·표정·의상·조명·배경은 가져오지 않는다.\\n\\n';
+      }
+      const sourceLabel = existing ? '기존 이미지 재시트 — 인물 이미지를 @ref1로 첨부' : '새 인물';
+      const header = '턴어라운드 시트 생성 프롬프트 (' + gen + ' / ' + sourceLabel + ') — 생성 후 얼굴 패널을 크롭해 참조로 사용 (core/prompts/turnaround-sheet.md 5절)\\n\\n';
+      return header + refDecl + DATA.turnaroundTemplates[gen]
+        .replaceAll('[인물 서술]', block)
+        .replaceAll('[의상]', wardrobe);
+    }
+
+    function copyBrief() {
+      const text = document.getElementById('brief').textContent;
+      const statusEl = document.getElementById('copyStatus');
+      const done = (ok) => { statusEl.textContent = ok ? '복사됨' : '복사 실패 — 직접 선택해 복사하세요'; };
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(text).then(() => done(true), () => done(fallbackCopy(text)));
+      } else {
+        done(fallbackCopy(text));
+      }
+    }
+
+    function fallbackCopy(text) {
+      const textarea = document.createElement('textarea');
+      textarea.value = text;
+      document.body.appendChild(textarea);
+      textarea.select();
+      const ok = document.execCommand('copy');
+      textarea.remove();
+      return ok;
+    }
+  </script>
+</body>
+</html>
+`;
+}
+
+main().catch((error) => {
+  console.error(error.message || error);
+  process.exit(1);
+});
