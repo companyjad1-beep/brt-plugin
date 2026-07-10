@@ -16,12 +16,14 @@ argument-hint: "idea=<대상 파일 경로 또는 붙여넣은 프롬프트> [re
 
 - `core/prompts/modes.md`
 - `core/prompts/loop.md`
+- `core/prompts/deep-decomposition.md`
 - `core/prompts/design-memo.md`
 - `core/generators/gpt-image-2.md`
 - `core/generators/nano-banana-pro.md`
 - `core/generators/seedance-2.md`
 - `core/checklists/image.checklist.yaml`
 - `core/checklists/video.checklist.yaml`
+- `core/schema/image-prompt-template.json`
 - `core/schema/storage-conventions.md`
 
 ## 실행 경계
