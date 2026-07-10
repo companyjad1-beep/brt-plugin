@@ -212,6 +212,18 @@ def frameless_card(shot: Image.Image, card_w: int) -> Image.Image:
                               outline=(0, 0, 0, 28), width=2)
     return card
 
+def build_cutout(shot: Image.Image, card_w: int) -> Image.Image:
+    """Floating UI cutout chip: rounded fragment of a capture (Zeta-style evidence)."""
+    card_h = round(shot.height * card_w / shot.width)
+    shot = shot.convert("RGB").resize((card_w, card_h), Image.LANCZOS)
+    radius = round(min(card_w, card_h) * 0.18)
+    card = Image.new("RGBA", (card_w, card_h), (0, 0, 0, 0))
+    card.paste(shot, (0, 0), rounded_mask((card_w, card_h), radius))
+    outline = ImageDraw.Draw(card)
+    outline.rounded_rectangle([0, 0, card_w - 1, card_h - 1], radius,
+                              outline=(0, 0, 0, 28), width=2)
+    return card
+
 
 def wrap_text(draw: ImageDraw.ImageDraw, text: str, font, max_w: int) -> list[str]:
     lines: list[str] = []
@@ -310,6 +322,7 @@ def render(
     quote: dict | None = None,
     device_top: float = 0.0,
     seed: str = "",
+    cutouts: list[dict] | None = None,
 ) -> Image.Image:
     if bg_image is not None:
         canvas = cover_crop(Image.open(bg_image).convert("RGB"), width, height).convert("RGBA")
@@ -411,6 +424,24 @@ def render(
             top += (available - device.height) // 2
         # else: device bleeds off the bottom edge (intentional marketing style).
     canvas.alpha_composite(device, ((width - device.width) // 2, top))
+
+    # Floating UI cutouts (Zeta-style evidence chips) — composited above the device.
+    for co in cutouts or []:
+        chip_src = Image.open(co["path"])
+        c = co.get("crop")
+        if c:
+            sw, sh = chip_src.size
+            chip_src = chip_src.crop((round(c[0] * sw), round(c[1] * sh),
+                                      round(c[2] * sw), round(c[3] * sh)))
+        chip = build_cutout(chip_src, round(width * float(co.get("width", 0.55))))
+        r = float(co.get("rotate", 0.0))
+        if r:
+            chip = chip.rotate(r, expand=True, resample=Image.BICUBIC)
+        chip = drop_shadow(chip, blur=round(width * 0.025),
+                           alpha=120, dy=round(width * 0.008))
+        cx = round(width * float(co.get("x", 0.72)))
+        cy = round(height * float(co.get("y", 0.55)))
+        canvas.alpha_composite(chip, (cx - chip.width // 2, cy - chip.height // 2))
     return canvas.convert("RGB")
 
 
@@ -522,6 +553,15 @@ def main() -> None:
                 src = (root / localized(src_val, locale)) if src_val else None
                 bg_image = screen.get("background_image")
 
+                cutouts = []
+                for co in screen.get("cutouts") or []:
+                    co = dict(co)
+                    co_src = co.get("source") or src_val
+                    if not co_src:
+                        sys.exit(f"config error: screen {idx} cutout needs a source")
+                    co["path"] = root / localized(co_src, locale)
+                    cutouts.append(co)
+
                 def opt(key, fallback=None):
                     return screen.get(key, defaults.get(key, fallback))
 
@@ -553,6 +593,7 @@ def main() -> None:
                     quote=screen.get("quote"),
                     device_top=float(opt("device_top", 0.0)),
                     seed=str(opt("seed", f"{target_name}/{idx}")),
+                    cutouts=cutouts,
                 )
                 name = f"{idx:02d}_{src.stem if src else 'quote'}.png"
                 img.save(out_dir / name)

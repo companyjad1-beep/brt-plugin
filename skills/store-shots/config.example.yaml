@@ -40,6 +40,13 @@ screens:
     badge: "AI 감정일기"                       # 아이브로우 뱃지 (세트의 절반 이하만 — QA 규칙)
     title: "[답장]이 오는 일기장"                # [단어] = accent_color 하이라이트
     subtitle: "쓰면, 도란이가 읽고 답해줘"
+    cutouts:                                    # 플로팅 컷아웃(증거 칩) — 카피의 증거 UI 조각을 디바이스 위에 띄움 (PATTERNS "플로팅 컷아웃")
+      - crop: [0.08, 0.18, 0.92, 0.38]          # 캡처 기준 [x0,y0,x1,y1] 비율 — 컴포넌트 경계대로
+        width: 0.62                             # 캔버스 폭 대비 칩 폭
+        x: 0.68                                 # 칩 중심 x (0~1)
+        y: 0.58                                 # 칩 중심 y (0~1)
+        rotate: -3
+      # - source: screens/other.png             # 다른 캡처에서 잘라올 때
 
   # 로케일별 텍스트/캡처 + 투톤 헤드라인 + 회전
   - source: { ko: screens/detail.png, en: screens/en/detail.png }
