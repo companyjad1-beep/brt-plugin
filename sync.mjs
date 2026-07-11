@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 // SOT: brtwritenotai = 0.skill/brtwritenotai / brtimg = 0.skill/imgprmpt / store-shots = 0.skill/store-shots
-// kickoff은 이 플러그인이 원본 — skills/kickoff에서 직접 수정 (2026-07-11 claude-skills에서 이관, sync 대상 아님)
+// kickoff·marketing-plan은 이 플러그인이 원본 — skills/에서 직접 수정 (2026-07-11 claude-skills에서 이관, sync 대상 아님)
 // 이 플러그인은 배포 스냅샷 — SOT 수정 후 `node sync.mjs`로 갱신한다.
 import { cpSync, rmSync, readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
