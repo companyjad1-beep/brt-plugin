@@ -132,4 +132,4 @@ description: 앱스토어/플레이스토어 출시 자산 자동 생성 — 앱
 ## 주의
 
 - 이 스킬은 대상 앱의 제품 코드를 수정하지 않는다. 산출물은 `store_assets/` 아래에만 쓴다.
-- 렌더러(`generate.py`) 자체의 버그/개선은 SOT인 `D:/business/programming/0.skill/store-shots` 레포에서 수정한다.
+- 렌더러(`generate.py`)를 이 플러그인 폴더에서 직접 수정하지 않는다 — 스냅샷이라 다음 배포 때 덮어써진다. 버그·개선 제안은 플러그인 레포(github.com/companyjad1-beep/brt-plugin) 이슈로.

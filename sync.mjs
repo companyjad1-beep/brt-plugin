@@ -52,9 +52,11 @@ patch('skills/brtimg/SKILL.md', [
   ['- 모든 상대 경로는 저장소 루트 기준으로 해석한다.',
    '- **플러그인 환경 경로 규칙**: `core/...` 상대 경로는 전부 이 스킬 폴더 기준(`${CLAUDE_PLUGIN_ROOT}/skills/brtimg/core/...`)으로 해석한다. 산출물 `workspace/...`는 호스트 프로젝트 루트 기준이다.'],
 ]);
-// store-shots 플러그인 스냅샷은 번들 경로 사용 (파일 경로만 치환 — SOT 안내 문구의 레포 경로는 유지)
+// store-shots 플러그인 스냅샷은 번들 경로 사용 (파일 경로 치환 + SOT 안내 문구를 외부 설치자용으로 치환)
 patch('skills/store-shots/SKILL.md', [
   ['D:/business/programming/0.skill/store-shots/generate.py', '${CLAUDE_PLUGIN_ROOT}/skills/store-shots/generate.py'],
   ['D:/business/programming/0.skill/store-shots/config.example.yaml', '${CLAUDE_PLUGIN_ROOT}/skills/store-shots/config.example.yaml'],
+  ['- 렌더러(`generate.py`) 자체의 버그/개선은 SOT인 `D:/business/programming/0.skill/store-shots` 레포에서 수정한다.',
+   '- 렌더러(`generate.py`)를 이 플러그인 폴더에서 직접 수정하지 않는다 — 스냅샷이라 다음 배포 때 덮어써진다. 버그·개선 제안은 플러그인 레포(github.com/companyjad1-beep/brt-plugin) 이슈로.'],
 ]);
 console.log('SYNCED');
