@@ -1,19 +1,14 @@
 #!/usr/bin/env node
-// SOT: brtwritenotai = 0.skill/brtwritenotai / brtimg = 0.skill/imgprmpt / store-shots = 0.skill/store-shots
-// kickoff·marketing-plan은 이 플러그인이 원본 — skills/에서 직접 수정 (2026-07-11 claude-skills에서 이관, sync 대상 아님)
+// SOT: brtimg = 0.skill/imgprmpt / store-shots = 0.skill/store-shots
+// kickoff·marketing-plan·brtwritenotai는 이 플러그인이 원본 — skills/에서 직접 수정 (2026-07-11 이관, sync 대상 아님)
 // 이 플러그인은 배포 스냅샷 — SOT 수정 후 `node sync.mjs`로 갱신한다.
 import { cpSync, rmSync, readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { homedir } from 'node:os';
 
 const NEWZ = 'D:/business/programming/newz';
-const WRITE = 'D:/business/programming/0.skill/brtwritenotai';
 const IMG = 'D:/business/programming/0.skill/imgprmpt';
 const SHOT = 'D:/business/programming/0.skill/store-shots';
-
-// brtwritenotai (하네스: SKILL 어댑터 + core 통짜, 경로가 스킬-폴더 상대라 패치 불요)
-rmSync('skills/brtwritenotai', { recursive: true, force: true });
-cpSync(WRITE, 'skills/brtwritenotai', { recursive: true });
 
 // builder.html
 cpSync(join(NEWZ, 'public/brtimg/builder.html'), 'assets/brtimg/builder.html');
