@@ -64,11 +64,19 @@ FONT_CANDIDATES_BOLD = [
     "C:/Windows/Fonts/Pretendard-Bold.ttf",
     "C:/Windows/Fonts/malgunbd.ttf",
     "C:/Windows/Fonts/segoeuib.ttf",
+    "/Library/Fonts/AppleSDGothicNeo.ttc",
+    "/System/Library/Fonts/AppleSDGothicNeo.ttc",
+    "/usr/share/fonts/opentype/noto/NotoSansCJK-Bold.ttc",
+    "/usr/share/fonts/truetype/nanum/NanumGothicBold.ttf",
 ]
 FONT_CANDIDATES_REGULAR = [
     "C:/Windows/Fonts/Pretendard-Regular.ttf",
     "C:/Windows/Fonts/malgun.ttf",
     "C:/Windows/Fonts/segoeui.ttf",
+    "/Library/Fonts/AppleSDGothicNeo.ttc",
+    "/System/Library/Fonts/AppleSDGothicNeo.ttc",
+    "/usr/share/fonts/opentype/noto/NotoSansCJK-Regular.ttc",
+    "/usr/share/fonts/truetype/nanum/NanumGothic.ttf",
 ]
 
 DEFAULT_BACKGROUND = ["#4F46E5", "#7C3AED"]
@@ -83,11 +91,16 @@ def hex_to_rgb(value: str) -> tuple[int, int, int]:
 
 
 def pick_font(explicit: str | None, candidates: list[str]) -> str:
-    paths = ([explicit] if explicit else []) + candidates
-    for p in paths:
+    # An explicitly configured font MUST exist — silent fallback to a system
+    # font is exactly the "폰트 0점" failure class (gagyebbu postmortem).
+    if explicit:
+        if Path(explicit).exists():
+            return explicit
+        sys.exit(f"config error: font not found: {explicit}")
+    for p in candidates:
         if p and Path(p).exists():
             return p
-    raise FileNotFoundError(f"No usable font found among: {paths}")
+    raise FileNotFoundError(f"No usable font found among: {candidates}")
 
 
 def vertical_gradient(w: int, h: int, top: str, bottom: str) -> Image.Image:
@@ -479,6 +492,11 @@ def render_feature(
         bg = spec.get("background", default_bg)
         canvas = vertical_gradient(w, h, bg[0], bg[-1]).convert("RGBA")
     draw = ImageDraw.Draw(canvas)
+    if spec.get("glow"):
+        add_glow(canvas, w, h, spec["glow"], cx=0.72, cy=0.30, size=1.2, strength=0.45)
+    if spec.get("decor") and spec.get("decor_style", "stars") == "stars":
+        palette = spec.get("decor_palette") or ["#FFFFFF"]
+        scatter_stars(canvas, w, h, palette[0], str(spec.get("seed", "feature")))
 
     source = localized(spec.get("source"), locale) or None
     color = hex_to_rgb(spec.get("text_color", default_color))
@@ -540,6 +558,29 @@ def render_feature(
     return canvas.convert("RGB")
 
 
+def save_preview_strip(out_dir: Path, root: Path, target_name: str, locale: str) -> None:
+    """Set-QA strip: all cuts side by side (single-image review is how
+    inconsistency slips through — SKILL step 4 set QA)."""
+    files = sorted(out_dir.glob("*.png"))
+    if len(files) < 2:
+        return
+    th = 640
+    thumbs = []
+    for f in files:
+        im = Image.open(f)
+        thumbs.append(im.resize((round(im.width * th / im.height), th), Image.LANCZOS))
+    gap = 10
+    w = sum(t.width for t in thumbs) + gap * (len(thumbs) - 1)
+    strip = Image.new("RGB", (w, th), (12, 10, 22))
+    x = 0
+    for t in thumbs:
+        strip.paste(t, (x, 0))
+        x += t.width + gap
+    mdir = root / "marketing"
+    mdir.mkdir(exist_ok=True)
+    strip.save(mdir / f"storefront-preview_{target_name}_{locale}.png")
+
+
 # ---------------------------------------------------------------- main
 
 def main() -> None:
@@ -553,9 +594,18 @@ def main() -> None:
     def resolve_fonts(locale: str) -> dict:
         # Per-locale override: font: { ja: { bold: ..., regular: ... } }
         lc = font_cfg.get(locale) or {}
+
+        def config_relative(p):
+            # Font paths resolve against the config's folder, not the CWD —
+            # CWD-relative lookup silently missed store_assets/fonts/ when the
+            # renderer ran from the app root (malgun-fallback failure class).
+            if p and not Path(p).is_absolute() and (root / p).exists():
+                return str(root / p)
+            return p
+
         return {
-            "bold": pick_font(lc.get("bold") or font_cfg.get("bold"), FONT_CANDIDATES_BOLD),
-            "regular": pick_font(lc.get("regular") or font_cfg.get("regular"), FONT_CANDIDATES_REGULAR),
+            "bold": pick_font(config_relative(lc.get("bold") or font_cfg.get("bold")), FONT_CANDIDATES_BOLD),
+            "regular": pick_font(config_relative(lc.get("regular") or font_cfg.get("regular")), FONT_CANDIDATES_REGULAR),
         }
 
     FONTS = resolve_fonts("")
@@ -633,6 +683,7 @@ def main() -> None:
                 name = f"{idx:02d}_{src.stem if src else 'quote'}.png"
                 img.save(out_dir / name)
                 count += 1
+            save_preview_strip(out_dir, root, target_name, locale)
         print(f"[done] {target_name}: {len(locales) * len(screens)} images")
 
     fg = cfg.get("feature_graphic")
@@ -657,7 +708,16 @@ def main() -> None:
                 if h > w:
                     # Portrait (story/reel) → screenshot-style vertical layout.
                     src_val = bn.get("source")
+                    bn_cutouts = []
+                    for co in bn.get("cutouts") or []:
+                        co = dict(co)
+                        co_src = co.get("source") or src_val
+                        if not co_src:
+                            sys.exit(f"config error: banner {i} cutout needs a source")
+                        co["path"] = root / localized(co_src, locale)
+                        bn_cutouts.append(co)
                     img = render(
+                        cutouts=bn_cutouts,
                         shot_path=(root / localized(src_val, locale)) if src_val else None,
                         title=title_lines(bn.get("title"), locale),
                         subtitle=localized(bn.get("subtitle"), locale),
