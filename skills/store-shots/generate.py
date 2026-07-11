@@ -226,6 +226,27 @@ def build_cutout(shot: Image.Image, card_w: int) -> Image.Image:
     return card
 
 
+def composite_cutouts(canvas: Image.Image, cutouts: list[dict] | None,
+                      width: int, height: int) -> None:
+    """Floating UI cutout chips (Zeta-style evidence), composited above everything."""
+    for co in cutouts or []:
+        chip_src = Image.open(co["path"])
+        c = co.get("crop")
+        if c:
+            sw, sh = chip_src.size
+            chip_src = chip_src.crop((round(c[0] * sw), round(c[1] * sh),
+                                      round(c[2] * sw), round(c[3] * sh)))
+        chip = build_cutout(chip_src, round(width * float(co.get("width", 0.55))))
+        r = float(co.get("rotate", 0.0))
+        if r:
+            chip = chip.rotate(r, expand=True, resample=Image.BICUBIC)
+        chip = drop_shadow(chip, blur=round(width * 0.025),
+                           alpha=120, dy=round(width * 0.008))
+        cx = round(width * float(co.get("x", 0.72)))
+        cy = round(height * float(co.get("y", 0.55)))
+        canvas.alpha_composite(chip, (cx - chip.width // 2, cy - chip.height // 2))
+
+
 def wrap_text(draw: ImageDraw.ImageDraw, text: str, font, max_w: int) -> list[str]:
     lines: list[str] = []
     for para in text.split("\n"):
@@ -429,22 +450,7 @@ def render(
         canvas.alpha_composite(device, ((width - device.width) // 2, top))
 
     # Floating UI cutouts (Zeta-style evidence chips) — composited above the device.
-    for co in cutouts or []:
-        chip_src = Image.open(co["path"])
-        c = co.get("crop")
-        if c:
-            sw, sh = chip_src.size
-            chip_src = chip_src.crop((round(c[0] * sw), round(c[1] * sh),
-                                      round(c[2] * sw), round(c[3] * sh)))
-        chip = build_cutout(chip_src, round(width * float(co.get("width", 0.55))))
-        r = float(co.get("rotate", 0.0))
-        if r:
-            chip = chip.rotate(r, expand=True, resample=Image.BICUBIC)
-        chip = drop_shadow(chip, blur=round(width * 0.025),
-                           alpha=120, dy=round(width * 0.008))
-        cx = round(width * float(co.get("x", 0.72)))
-        cy = round(height * float(co.get("y", 0.55)))
-        canvas.alpha_composite(chip, (cx - chip.width // 2, cy - chip.height // 2))
+    composite_cutouts(canvas, cutouts, width, height)
     return canvas.convert("RGB")
 
 
@@ -504,13 +510,29 @@ def render_feature(
             draw.text((x, y), text, font=font, fill=fill)
         y += round(font.size * 1.28)
 
-    if source:
+    if source and spec.get("device", True):
         dw = float(spec.get("device_width", 0.24))
-        device = frame_device(Image.open(root / source), round(w * dw))
+        shot = Image.open(root / source)
+        c = spec.get("crop")
+        if c:
+            sw, sh = shot.size
+            shot = shot.crop((round(c[0] * sw), round(c[1] * sh),
+                              round(c[2] * sw), round(c[3] * sh)))
+        device = frame_device(shot, round(w * dw))
         # Anchor to the right edge; vertically centered-ish with headroom.
         dx = w - device.width - round(w * 0.05)
         dy = round(h * float(spec.get("device_top", 0.10)))
         canvas.alpha_composite(device, (dx, dy))
+
+    cutouts: list[dict] = []
+    for co in spec.get("cutouts") or []:
+        co = dict(co)
+        co_src = localized(co.get("source"), locale) or source
+        if not co_src:
+            sys.exit("config error: feature_graphic cutout needs a source")
+        co["path"] = root / co_src
+        cutouts.append(co)
+    composite_cutouts(canvas, cutouts, w, h)
     return canvas.convert("RGB")
 
 
@@ -597,7 +619,7 @@ def main() -> None:
                     shadow=bool(opt("shadow", True)),
                     glow=opt("glow", "") or "",
                     decor_style=opt("decor_style", "dots"),
-                    crop=screen.get("crop"),
+                    crop=screen.get("crop", defaults.get("crop")),
                     device_position=opt("device_position", "center"),
                     quote=screen.get("quote"),
                     device_top=float(opt("device_top", 0.0)),

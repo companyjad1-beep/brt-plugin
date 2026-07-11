@@ -86,6 +86,7 @@ description: 앱스토어/플레이스토어 출시 자산 자동 생성 — 앱
 ### 4. 렌더링 → `store_assets/output/`
 
 - **스타일 티어 선택**: 같은 폴더의 `PATTERNS.md`(실측 기반 — 무료 4티어·유료 3패턴·카테고리별 문법·카피 원칙·세트 QA 규칙)를 읽고 앱 성격에 맞는 티어와 카피 문법을 골라 사용자에게 제안한다.
+- **폰트 소싱 (config 작성 전 필수)**: 시스템 폰트에 맡기지 마라 — Pretendard static이 없는 머신에서 맑은고딕 폴백으로 세트가 즉사한다(가계쀼 실측). ① `PATTERNS.md` "폰트 소싱" 표에서 티어·앱 페르소나에 맞는 **상업 무료** 타이틀 폰트를 고르고(애매하면 후보 2개를 렌더해 비교 제안) ② `store_assets/fonts/`에 다운로드 — VF 말고 static 웨이트 ③ `ImageFont.truetype(...).getname()`으로 로드 검증(LFS 포인터·404 HTML 오다운로드 방지) ④ config `font: {bold: fonts/…, regular: fonts/…}` 상대경로 지정. 서브·본문용 regular는 뉴트럴(같은 패밀리 Medium 또는 Pretendard Medium).
 - `store_assets/config.yaml` 작성. 스키마는 `${CLAUDE_PLUGIN_ROOT}/skills/store-shots/config.example.yaml` 참조. 1-b에서 확정·감사 통과한 title/subtitle을 그대로 사용.
 - 배경 그라데이션은 앱의 브랜드 컬러(테마/스플래시에서 추출)를 기본으로.
 - 실행:
@@ -125,6 +126,7 @@ description: 앱스토어/플레이스토어 출시 자산 자동 생성 — 앱
 - [ ] 카피 패스(1-b): 유저 실제 언어 채집 → voice-first 초안 → 전 컷 헤드라인·서브가 벤핏 사다리 꼭대기 + **소리 내어 읽어 광고 티 없음** + 즉시 감사 통과
 - [ ] 소개글: 스토어별 × 로케일별 파일 생성, 전 항목 글자수 제한 통과
 - [ ] 스크린샷: 타겟 규격 × 로케일 × 화면 전부 생성, 시각 검증 통과 (개념 슬라이드 사용 시 세트에 실제 UI 캡처 ≥1장 확인)
+- [ ] 폰트: 상업 무료 라이선스 확인 · `store_assets/fonts/` 로컬 설치 · PIL 로드 검증 (시스템 폴백 의존 금지)
 - [ ] 히어로/배경: 배경 소스 결정(codex 소품·사진급 vs 절차적) 사용자 합의 완료 + codex 배경은 marketing-plate 레지스터 + image.checklist 게이트 통과 확인
 - [ ] `captions.md` 작성 완료 (슬롯·카피·근거·업로드 순서 — 배경 방식과 무관하게 필수)
 - [ ] 카피 검증: **스크린샷 전 컷** = PATTERNS 카피 감사(북극성 "다운로드 이유인가" · 범용성 · 서브 재진술 금지 · 동사 반복) + **소개글 본문(장문 설명) = brtwrite 음화32 스팬 스캔** — 둘 다 통과

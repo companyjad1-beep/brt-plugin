@@ -118,7 +118,26 @@ KR 대비 US 상위권에서 다른 점만:
 "그라데이션 + 가운데 헤드라인 + 폰 한 대" 템플릿 티를 깨는 가장 싼 수단. 카피가 가리키는 증거(말풍선·답장·별점·수치 카드)를 캡처에서 잘라 **디바이스 위에 확대 칩으로 띄운다** — "제품 콘텐츠가 곧 증거"(카피 원칙 3)의 비주얼 구현. 토스·당근·제타 전부 이 문법.
 
 - config: screen에 `cutouts: [{crop: [x0,y0,x1,y1], source?: 다른캡처, width: 0.55, x: 0.72, y: 0.55, rotate: -3}]` — x/y는 칩 중심의 캔버스 비율, source 생략 시 해당 screen 캡처에서 자름.
-- 규칙: ① **컴포넌트 경계대로** 크롭(말풍선/카드 전체) — 중간에서 잘리면 바로 싸 보임 ② 컷당 1~2개, **카피의 증거가 되는 컷에만** (전 컷 남발 = 뱃지 남발과 같은 실패) ③ 칩도 지오메트리 시스템의 일부 — 세트 전체에서 크기·회전 각도를 한 패밀리로 ④ 헤드라인·디바이스 핵심 영역을 가리지 않게 ⑤ 칩 안 텍스트가 읽혀야 한다 — 안 읽히면 width를 키우거나 빼라.
+- 규칙: ① **컴포넌트 경계대로** 크롭(말풍선/카드 전체) — 중간에서 잘리면 바로 싸 보임. 경계는 눈대중 말고 **픽셀 스캔으로 실측**하라(가계쀼 실측 — 눈대중 2회 연속 텍스트 잘림) ② 컷당 1~2개, **카피의 증거가 되는 컷에만** (전 컷 남발 = 뱃지 남발과 같은 실패) ③ 칩도 지오메트리 시스템의 일부 — 세트 전체에서 크기·회전 각도를 한 패밀리로 ④ 헤드라인·디바이스 핵심 영역을 가리지 않게 ⑤ 칩 안 텍스트가 읽혀야 한다 — 안 읽히면 width를 키우거나 빼라 ⑥ 확대용 칩은 **원본 컴포넌트를 덮게 배치**해도 된다 — 같은 문장이 원본+칩으로 두 번 보이는 게 오히려 실패. 채팅 앱이면 질문+답변을 통짜로 크롭해야 맥락이 산다(가계쀼 실측).
+
+## 폰트 소싱 — 상업 무료 한글 폰트 (2026-07-11 URL 실측)
+
+시스템 폰트 의존은 세트를 즉사시킨다(가계쀼 실측 — Pretendard static 부재 → 맑은고딕 폴백 → "폰트 0점" 판정). 타이틀 폰트는 앱 페르소나로 고르고, 반드시 `store_assets/fonts/`에 파일로 받아 config `font:`에 상대경로로 지정한다.
+
+| 무드 (티어) | 폰트 · 라이선스 | 다운로드 |
+|---|---|---|
+| 뉴트럴·금융·프리미엄 (toss-minimal) | Pretendard ExtraBold/Black — OFL | `https://cdn.jsdelivr.net/npm/pretendard@1.3.9/dist/public/static/alternative/Pretendard-ExtraBold.ttf` (웨이트명 치환) |
+| 임팩트·프로모·도파민 | Black Han Sans / Gothic A1 Black — OFL | `https://raw.githubusercontent.com/google/fonts/main/ofl/blackhansans/BlackHanSans-Regular.ttf` · `…/ofl/gothica1/GothicA1-Black.ttf` |
+| 플레이풀·캐릭터·커뮤니티 (playful-badge) | Jua / Do Hyeon — OFL (배민 기증판) | `…/ofl/jua/Jua-Regular.ttf` · `…/ofl/dohyeon/DoHyeon-Regular.ttf` |
+| 감성·일기·에세이 (calm-minimal) | Gowun Batang / Nanum Myeongjo — OFL | `…/ofl/gowunbatang/GowunBatang-Bold.ttf` · `…/ofl/nanummyeongjo/NanumMyeongjo-Bold.ttf` |
+| 손글씨·귀여움 | Gaegu Bold — OFL | `…/ofl/gaegu/Gaegu-Bold.ttf` |
+| 테크·개발자 도구 | IBM Plex Sans KR Bold — OFL | `…/ofl/ibmplexsanskr/IBMPlexSansKR-Bold.ttf` |
+
+`…` = `https://raw.githubusercontent.com/google/fonts/main` (전부 2026-07-11 HTTP 200 확인). 같은 패턴 `…/ofl/<family>/<File>.ttf`로 다른 OFL 한글 폰트도 받을 수 있다.
+
+- **서브·본문은 뉴트럴 유지** — 같은 패밀리 Medium/Regular 또는 Pretendard Medium. 디스플레이체는 타이틀 전용, 서브까지 쓰면 유치해진다.
+- 직링크 없는 무료 상업 계열(수동 zip): GmarketSans(이벤트·프로모 헤드라인 최강), S-Core Dream(9웨이트), Cafe24 써라운드(라운드), 배민 한나·도현 원본. 목록 밖 폰트는 **라이선스 원문에서 "상업적 사용/임베딩 허용"을 직접 확인**하고 출처를 captions.md에 기록.
+- 함정 2개 (실측): ① **Variable font 금지** — PIL은 VF를 기본 인스턴스로만 열어 웨이트 지정이 안 된다(`PretendardVariable.ttf` 함정). 반드시 static 웨이트 파일. ② 다운로드 직후 `python -c "from PIL import ImageFont; print(ImageFont.truetype('fonts/X.ttf',40).getname())"`으로 검증 — GitHub raw가 LFS 포인터·404 본문을 조용히 뱉는 경우가 실제로 있다(2회 실측).
 
 ## 공통 원칙 (실측에서 관찰)
 
