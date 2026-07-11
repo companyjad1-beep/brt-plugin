@@ -240,13 +240,17 @@ def build_cutout(shot: Image.Image, card_w: int) -> Image.Image:
     card = Image.new("RGBA", (card_w, card_h), (0, 0, 0, 0))
     card.paste(shot, (0, 0), rounded_mask((card_w, card_h), radius))
     outline = ImageDraw.Draw(card)
+    # Dual ring: dark outer + light inner hairline — separates the chip from
+    # both dark and light backgrounds (gagyebbu cut3: chip melted into the UI).
     outline.rounded_rectangle([0, 0, card_w - 1, card_h - 1], radius,
-                              outline=(0, 0, 0, 28), width=2)
+                              outline=(0, 0, 0, 60), width=3)
+    outline.rounded_rectangle([1, 1, card_w - 2, card_h - 2], max(radius - 1, 1),
+                              outline=(255, 255, 255, 46), width=1)
     return card
 
 
 def composite_cutouts(canvas: Image.Image, cutouts: list[dict] | None,
-                      width: int, height: int) -> None:
+                      width: int, height: int, qa_tag: str = "") -> None:
     """Floating UI cutout chips (Zeta-style evidence), composited above everything."""
     for co in cutouts or []:
         chip_src = Image.open(co["path"])
@@ -255,7 +259,11 @@ def composite_cutouts(canvas: Image.Image, cutouts: list[dict] | None,
             sw, sh = chip_src.size
             chip_src = chip_src.crop((round(c[0] * sw), round(c[1] * sh),
                                       round(c[2] * sw), round(c[3] * sh)))
-        chip = build_cutout(chip_src, round(width * float(co.get("width", 0.55))))
+        chip_w = round(width * float(co.get("width", 0.55)))
+        scale = chip_w / max(chip_src.width, 1)
+        if scale < 0.35:
+            qa_warn(qa_tag, f"칩 축소 {round(scale * 100)}% — 35% 미만이면 칩 글자가 안 읽힘 (width 확대 또는 크롭 축소)")
+        chip = build_cutout(chip_src, chip_w)
         r = float(co.get("rotate", 0.0))
         if r:
             chip = chip.rotate(r, expand=True, resample=Image.BICUBIC)
@@ -269,17 +277,25 @@ def composite_cutouts(canvas: Image.Image, cutouts: list[dict] | None,
 def wrap_text(draw: ImageDraw.ImageDraw, text: str, font, max_w: int) -> list[str]:
     lines: list[str] = []
     for para in text.split("\n"):
-        words = para.split()
-        cur = ""
-        for word in words:
-            trial = f"{cur} {word}".strip()
-            if not cur or draw.textlength(trial, font=font) <= max_w:
-                cur = trial
-            else:
+        chunks = [para]
+        # Overflowing multi-sentence paragraphs break at sentence boundaries
+        # first — mid-sentence wraps read awkward (gagyebbu cut2 sub).
+        if draw.textlength(para, font=font) > max_w:
+            parts = re.split(r"(?<=[.!?…]) +", para)
+            if len(parts) > 1:
+                chunks = parts
+        for chunk in chunks:
+            words = chunk.split()
+            cur = ""
+            for word in words:
+                trial = f"{cur} {word}".strip()
+                if not cur or draw.textlength(trial, font=font) <= max_w:
+                    cur = trial
+                else:
+                    lines.append(cur)
+                    cur = word
+            if cur:
                 lines.append(cur)
-                cur = word
-        if cur:
-            lines.append(cur)
     return lines
 
 
@@ -458,6 +474,23 @@ def render(
             sw, sh = shot.size
             shot = shot.crop((round(crop[0] * sw), round(crop[1] * sh),
                               round(crop[2] * sw), round(crop[3] * sh)))
+        if qa_tag:
+            # Dead-space probe: the longest run of featureless rows. A third of
+            # the capture with no content ships as dead space (crop it, add a
+            # zoom chip, or recapture) — bottom-half-only metrics miss the
+            # empty middle above FABs/input bars (gagyebbu cut2).
+            probe = shot.convert("L").resize((24, 96), Image.BILINEAR)
+            ppx = probe.load()
+            run = best = 0
+            for yy in range(96):
+                vals = [ppx[xx, yy] for xx in range(24)]
+                if max(vals) - min(vals) < 12:
+                    run += 1
+                    best = max(best, run)
+                else:
+                    run = 0
+            if best >= 32:
+                qa_warn(qa_tag, f"캡처의 연속 빈 구간 {round(best / 96 * 100)}% — 크롭·줌칩·재캡처 검토")
         if frame:
             device = frame_device(shot, round(width * device_width))
         else:
@@ -483,7 +516,7 @@ def render(
         canvas.alpha_composite(device, ((width - device.width) // 2, top))
 
     # Floating UI cutouts (Zeta-style evidence chips) — composited above the device.
-    composite_cutouts(canvas, cutouts, width, height)
+    composite_cutouts(canvas, cutouts, width, height, qa_tag)
     return canvas.convert("RGB")
 
 
@@ -561,6 +594,7 @@ def render_feature(
         draw.text((bx + pad_x, y + pad_y - round(badge_font.size * 0.08)), badge,
                   font=badge_font, fill=hex_to_rgb(spec.get("badge_text_color", "#FFFFFF")))
         y += badge_block_h
+    text_spans: list[tuple[float, float, float]] = []
     for text, fill, font in lines:
         lw = draw.textlength(strip_marks(text), font=font)
         x = margin if source else (w - lw) / 2
@@ -568,6 +602,7 @@ def render_feature(
             draw_marked_line(draw, text, x, y, font, fill, accent)
         else:
             draw.text((x, y), text, font=font, fill=fill)
+        text_spans.append((y, y + font.size, x + lw))
         y += round(font.size * 1.28)
 
     if source and spec.get("device", True):
@@ -592,7 +627,23 @@ def render_feature(
             sys.exit("config error: feature_graphic cutout needs a source")
         co["path"] = root / co_src
         cutouts.append(co)
-    composite_cutouts(canvas, cutouts, w, h)
+    for co in cutouts:
+        # Chip-over-text probe: estimate chip box (rotation/shadow ignored)
+        # and warn when it clips a text line (gagyebbu feature sub clipped).
+        cw = w * float(co.get("width", 0.45))
+        with Image.open(co["path"]) as probe:
+            sw, sh = probe.size
+        cc = co.get("crop")
+        crop_w = (cc[2] - cc[0]) * sw if cc else sw
+        crop_h = (cc[3] - cc[1]) * sh if cc else sh
+        ch = cw * crop_h / max(crop_w, 1)
+        left = w * float(co.get("x", 0.72)) - cw / 2
+        top = h * float(co.get("y", 0.55)) - ch / 2
+        for ty0, ty1, tright in text_spans:
+            if top < ty1 and top + ch > ty0 and left < tright + 8:
+                qa_warn("feature", f"칩(x={co.get('x')}, y={co.get('y')})이 텍스트를 덮음 — 칩 이동 또는 카피 축약")
+                break
+    composite_cutouts(canvas, cutouts, w, h, "feature")
     return canvas.convert("RGB")
 
 
@@ -625,7 +676,15 @@ def main() -> None:
     # Windows cp949 consoles crash on Korean/em-dash prints — force utf-8.
     if hasattr(sys.stdout, "reconfigure"):
         sys.stdout.reconfigure(encoding="utf-8", errors="replace")
-    config_path = Path(sys.argv[1] if len(sys.argv) > 1 else "config.yaml")
+    # Iteration filter: --only=<substr> renders matching sections only
+    # (e.g. --only=feature, --only=playstore_phone, --only=banners).
+    argv = sys.argv[1:]
+    only = next((a.split("=", 1)[1] for a in argv if a.startswith("--only=")), None)
+    positional = [a for a in argv if not a.startswith("--")]
+    config_path = Path(positional[0] if positional else "config.yaml")
+
+    def only_allows(section: str) -> bool:
+        return only is None or only in section
     root = config_path.resolve().parent
     cfg = yaml.safe_load(config_path.read_text(encoding="utf-8"))
 
@@ -669,7 +728,7 @@ def main() -> None:
     enabled = enabled if screens else []
 
     count = 0
-    for target_name in enabled:
+    for target_name in [t for t in enabled if only_allows(t)]:
         spec = targets[target_name]
         for locale in locales:
             FONTS = resolve_fonts(locale)
@@ -731,7 +790,7 @@ def main() -> None:
         print(f"[done] {target_name}: {len(locales) * len(screens)} images")
 
     fg = cfg.get("feature_graphic")
-    if fg:
+    if fg and only_allows("feature"):
         for locale in locales:
             FONTS = resolve_fonts(locale)
             out_dir = out_root / "playstore_feature" / locale
@@ -742,7 +801,7 @@ def main() -> None:
         print(f"[done] playstore_feature: {len(locales)} images")
 
     banners = cfg.get("banners") or []
-    if banners:
+    if banners and only_allows("banners"):
         for locale in locales:
             FONTS = resolve_fonts(locale)
             out_dir = out_root / "banners" / locale
@@ -789,6 +848,23 @@ def main() -> None:
                 img.save(out_dir / name)
                 count += 1
         print(f"[done] banners: {len(locales) * len(banners)} images")
+
+    # Listing preview: feature graphic stacked over the first target's strip —
+    # reviews the storefront as buyers see it (feature + screenshots together).
+    if fg and screens and enabled:
+        first = enabled[0]
+        for locale in locales:
+            strip_p = root / "marketing" / f"storefront-preview_{first}_{locale}.png"
+            feat_p = out_root / "playstore_feature" / locale / "feature.png"
+            if strip_p.exists() and feat_p.exists():
+                strip = Image.open(strip_p)
+                feat = Image.open(feat_p)
+                fh = round(feat.height * strip.width / feat.width)
+                feat = feat.resize((strip.width, fh), Image.LANCZOS)
+                out = Image.new("RGB", (strip.width, fh + 12 + strip.height), (12, 10, 22))
+                out.paste(feat, (0, 0))
+                out.paste(strip, (0, fh + 12))
+                out.save(root / "marketing" / f"listing-preview_{locale}.png")
 
     print(f"total {count} images -> {out_root}")
     for msg in QA_WARNINGS:
