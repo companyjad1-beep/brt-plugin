@@ -1,5 +1,6 @@
 #!/usr/bin/env node
-// SOT: brtwritenotai = 0.skill/brtwritenotai / brtimg = 0.skill/imgprmpt / kickoff = 0.skill/claude-skills(깃허브 limch-skills) / store-shots = 0.skill/store-shots
+// SOT: brtwritenotai = 0.skill/brtwritenotai / brtimg = 0.skill/imgprmpt / store-shots = 0.skill/store-shots
+// kickoff은 이 플러그인이 원본 — skills/kickoff에서 직접 수정 (2026-07-11 claude-skills에서 이관, sync 대상 아님)
 // 이 플러그인은 배포 스냅샷 — SOT 수정 후 `node sync.mjs`로 갱신한다.
 import { cpSync, rmSync, readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
@@ -8,7 +9,6 @@ import { homedir } from 'node:os';
 const NEWZ = 'D:/business/programming/newz';
 const WRITE = 'D:/business/programming/0.skill/brtwritenotai';
 const IMG = 'D:/business/programming/0.skill/imgprmpt';
-const CS = 'D:/business/programming/0.skill/claude-skills';
 const SHOT = 'D:/business/programming/0.skill/store-shots';
 
 // brtwritenotai (하네스: SKILL 어댑터 + core 통짜, 경로가 스킬-폴더 상대라 패치 불요)
@@ -17,10 +17,6 @@ cpSync(WRITE, 'skills/brtwritenotai', { recursive: true });
 
 // builder.html
 cpSync(join(NEWZ, 'public/brtimg/builder.html'), 'assets/brtimg/builder.html');
-
-// kickoff (SOT = claude-skills v0.3 — marketing-plan은 사용자 검토 전이라 미편입)
-rmSync('skills/kickoff', { recursive: true, force: true });
-cpSync(join(CS, 'plugins/kickoff/skills/kickoff'), 'skills/kickoff', { recursive: true });
 
 // brtimg (어댑터 + 커맨드 계약 + core, holdout 격리 유지)
 cpSync(join(IMG, '.claude/skills/brtimg/SKILL.md'), 'skills/brtimg/SKILL.md');
