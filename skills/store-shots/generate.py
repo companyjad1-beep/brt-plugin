@@ -494,9 +494,13 @@ def render_feature(
     draw = ImageDraw.Draw(canvas)
     if spec.get("glow"):
         add_glow(canvas, w, h, spec["glow"], cx=0.72, cy=0.30, size=1.2, strength=0.45)
-    if spec.get("decor") and spec.get("decor_style", "stars") == "stars":
-        palette = spec.get("decor_palette") or ["#FFFFFF"]
-        scatter_stars(canvas, w, h, palette[0], str(spec.get("seed", "feature")))
+    if spec.get("decor"):
+        if spec.get("decor_style", "stars") == "stars":
+            palette = spec.get("decor_palette") or ["#FFFFFF"]
+            scatter_stars(canvas, w, h, palette[0], str(spec.get("seed", "feature")))
+        else:
+            palette = spec.get("decor_palette") or ["#F97316", "#10B981", "#F59E0B"]
+            scatter_dots(draw, w, h, palette, str(spec.get("seed", "feature")))
 
     source = localized(spec.get("source"), locale) or None
     color = hex_to_rgb(spec.get("text_color", default_color))
@@ -521,8 +525,25 @@ def render_feature(
         for text in wrap_text(draw, subtitle, sub_font, text_w):
             lines.append((text, (*color, 210), sub_font))
 
-    total_h = sum(round(f.size * 1.28) for _, _, f in lines)
+    badge = localized(spec.get("badge"), locale)
+    badge_font = ImageFont.truetype(FONTS["bold"], round(base * 0.036))
+    badge_block_h = 0
+    if badge:
+        badge_block_h = badge_font.size + 2 * round(badge_font.size * 0.42) + round(h * 0.045)
+
+    total_h = badge_block_h + sum(round(f.size * 1.28) for _, _, f in lines)
     y = (h - total_h) / 2
+    if badge:
+        pad_x = round(badge_font.size * 0.75)
+        pad_y = round(badge_font.size * 0.42)
+        tw = draw.textlength(badge, font=badge_font)
+        bw, bh = tw + 2 * pad_x, badge_font.size + 2 * pad_y
+        bx = margin if source else (w - bw) / 2
+        draw.rounded_rectangle([bx, y, bx + bw, y + bh], radius=bh / 2,
+                               fill=hex_to_rgb(spec.get("badge_color", "#7C3AED")))
+        draw.text((bx + pad_x, y + pad_y - round(badge_font.size * 0.08)), badge,
+                  font=badge_font, fill=hex_to_rgb(spec.get("badge_text_color", "#FFFFFF")))
+        y += badge_block_h
     for text, fill, font in lines:
         lw = draw.textlength(strip_marks(text), font=font)
         x = margin if source else (w - lw) / 2
