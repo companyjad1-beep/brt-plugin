@@ -81,6 +81,12 @@ FONT_CANDIDATES_REGULAR = [
 
 DEFAULT_BACKGROUND = ["#4F46E5", "#7C3AED"]
 DEFAULT_TEXT_COLOR = "#FFFFFF"
+QA_WARNINGS: list[str] = []
+
+
+def qa_warn(tag: str, msg: str) -> None:
+    if tag:
+        QA_WARNINGS.append(f"{tag}: {msg}")
 
 
 # ---------------------------------------------------------------- helpers
@@ -358,6 +364,7 @@ def render(
     device_top: float = 0.0,
     seed: str = "",
     cutouts: list[dict] | None = None,
+    qa_tag: str = "",
 ) -> Image.Image:
     if bg_image is not None:
         canvas = cover_crop(Image.open(bg_image).convert("RGB"), width, height).convert("RGBA")
@@ -369,7 +376,7 @@ def render(
     draw = ImageDraw.Draw(canvas)
 
     title_font = ImageFont.truetype(FONTS["bold"], round(width * 0.070))
-    sub_font = ImageFont.truetype(FONTS["regular"], round(width * 0.040))
+    sub_font = ImageFont.truetype(FONTS["regular"], round(width * 0.044))
     badge_font = ImageFont.truetype(FONTS["bold"], round(width * 0.032))
     color = hex_to_rgb(text_color)
     margin = round(width * 0.07)
@@ -414,6 +421,10 @@ def render(
         for entry in title:
             fill = hex_to_rgb(entry["color"]) if entry["color"] else color
             lines.append((entry["text"], fill))
+    if badge:
+        qa_warn(qa_tag, "뱃지 사용 — 기본 0개 정책, 사용자 명시 승인 없으면 제거 (가계쀼 2회 실측)")
+    if len(lines) > 2:
+        qa_warn(qa_tag, f"타이틀 {len(lines)}줄 — 최대 2줄, 카피 축약 필요")
     for text, fill in lines:
         lw = draw.textlength(strip_marks(text), font=title_font)
         if "[" in text:
@@ -425,7 +436,10 @@ def render(
     if subtitle:
         y += round(height * 0.012)
         sub_color = (*color, 210)
-        for line in wrap_text(draw, subtitle, sub_font, max_text_w):
+        sub_lines = wrap_text(draw, subtitle, sub_font, max_text_w)
+        if len(sub_lines) > 2:
+            qa_warn(qa_tag, f"서브 {len(sub_lines)}줄 — 최대 2줄, 카피 축약 필요")
+        for line in sub_lines:
             lw = draw.textlength(line, font=sub_font)
             draw.text((line_x(lw), y), line, font=sub_font, fill=sub_color)
             y += round(sub_font.size * 1.35)
@@ -434,6 +448,8 @@ def render(
         # Readability default (gagyebbu postmortem): in-device text scales with
         # width only, so framed devices default big; frameless cards stay 0.80.
         device_width = 0.88 if frame else 0.80
+    if shot_path is not None and frame and device_width < 0.85:
+        qa_warn(qa_tag, f"device_width {device_width} — 0.85 미만이면 폰 속 글자가 죽는다 (보라고 넣는 것)")
     if quote:
         device = build_quote_card(quote, round(width * device_width))
     elif shot_path is not None:
@@ -529,6 +545,7 @@ def render_feature(
     badge_font = ImageFont.truetype(FONTS["bold"], round(base * 0.036))
     badge_block_h = 0
     if badge:
+        qa_warn("feature", "뱃지 사용 — 기본 0개 정책, 사용자 명시 승인 없으면 제거")
         badge_block_h = badge_font.size + 2 * round(badge_font.size * 0.42) + round(h * 0.045)
 
     total_h = badge_block_h + sum(round(f.size * 1.28) for _, _, f in lines)
@@ -605,12 +622,17 @@ def save_preview_strip(out_dir: Path, root: Path, target_name: str, locale: str)
 # ---------------------------------------------------------------- main
 
 def main() -> None:
+    # Windows cp949 consoles crash on Korean/em-dash prints — force utf-8.
+    if hasattr(sys.stdout, "reconfigure"):
+        sys.stdout.reconfigure(encoding="utf-8", errors="replace")
     config_path = Path(sys.argv[1] if len(sys.argv) > 1 else "config.yaml")
     root = config_path.resolve().parent
     cfg = yaml.safe_load(config_path.read_text(encoding="utf-8"))
 
     global FONTS
     font_cfg = cfg.get("font") or {}
+    if not font_cfg:
+        QA_WARNINGS.append("font 미지정 — 시스템 폰트 폴백 (SKILL 4단계 폰트 소싱 누락)")
 
     def resolve_fonts(locale: str) -> dict:
         # Per-locale override: font: { ja: { bold: ..., regular: ... } }
@@ -700,6 +722,7 @@ def main() -> None:
                     device_top=float(opt("device_top", 0.0)),
                     seed=str(opt("seed", f"{target_name}/{idx}")),
                     cutouts=cutouts,
+                    qa_tag=f"{target_name}/{locale}/{idx:02d}",
                 )
                 name = f"{idx:02d}_{src.stem if src else 'quote'}.png"
                 img.save(out_dir / name)
@@ -756,6 +779,7 @@ def main() -> None:
                         rotate=float(bn.get("rotate", 0.0)),
                         crop=bn.get("crop"),
                         seed=f"banner/{i}",
+                        qa_tag=f"banner/{locale}/{i:02d}",
                     )
                 else:
                     # Landscape/square (OG, feature, PH gallery) → text-left layout.
@@ -767,6 +791,10 @@ def main() -> None:
         print(f"[done] banners: {len(locales) * len(banners)} images")
 
     print(f"total {count} images -> {out_root}")
+    for msg in QA_WARNINGS:
+        print(f"[qa][warn] {msg}")
+    if QA_WARNINGS:
+        print(f"[qa] {len(QA_WARNINGS)} warning(s) — 세트 QA 기준 미달 항목, 해소 후 재실행 권장")
 
 
 if __name__ == "__main__":
