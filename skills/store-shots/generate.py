@@ -335,7 +335,7 @@ def render(
     rotate: float = 0.0,
     accent_color: str = "",
     frame: bool = True,
-    device_width: float = 0.74,
+    device_width: float | None = None,
     shadow: bool = True,
     glow: str = "",
     decor_style: str = "dots",
@@ -417,6 +417,10 @@ def render(
             draw.text((line_x(lw), y), line, font=sub_font, fill=sub_color)
             y += round(sub_font.size * 1.35)
 
+    if device_width is None:
+        # Readability default (gagyebbu postmortem): in-device text scales with
+        # width only, so framed devices default big; frameless cards stay 0.80.
+        device_width = 0.88 if frame else 0.80
     if quote:
         device = build_quote_card(quote, round(width * device_width))
     elif shot_path is not None:
@@ -428,7 +432,7 @@ def render(
         if frame:
             device = frame_device(shot, round(width * device_width))
         else:
-            device = frameless_card(shot, round(width * (device_width if device_width != 0.74 else 0.80)))
+            device = frameless_card(shot, round(width * device_width))
     else:
         device = None  # text-only slide (e.g. portrait banner without a capture)
     if device is not None:
@@ -615,7 +619,7 @@ def main() -> None:
                     rotate=float(screen.get("rotate", 0.0)),
                     accent_color=opt("accent_color", ""),
                     frame=bool(opt("frame", True)),
-                    device_width=float(opt("device_width", 0.74)),
+                    device_width=(float(opt("device_width")) if opt("device_width") is not None else None),
                     shadow=bool(opt("shadow", True)),
                     glow=opt("glow", "") or "",
                     decor_style=opt("decor_style", "dots"),
@@ -667,7 +671,7 @@ def main() -> None:
                         align=bn.get("align", "center"),
                         accent_color=bn.get("accent_color", ""),
                         frame=bool(bn.get("frame", True)),
-                        device_width=float(bn.get("device_width", 0.74)),
+                        device_width=(float(bn["device_width"]) if bn.get("device_width") is not None else None),
                         rotate=float(bn.get("rotate", 0.0)),
                         crop=bn.get("crop"),
                         seed=f"banner/{i}",

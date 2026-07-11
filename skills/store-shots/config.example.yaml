@@ -27,7 +27,7 @@ defaults:                        # 모든 screen에 적용, screen에서 개별 
   accent_color: ""               # [단어] 인라인 하이라이트 색
   align: center                  # center | left
   frame: true                    # true=디바이스 베젤 / false=프레임리스 라운드 카드(토스식)
-  device_width: 0.74             # 캔버스 대비 디바이스 폭 비율 (0.74~0.92)
+  device_width: 0.88             # 생략 시 프레임 0.88 / 프레임리스 0.80 — 폰 속 글자는 폭에만 비례, 보라고 넣는 것 (PATTERNS "디바이스는 보라고")
   shadow: true                   # 디바이스/카드 드롭 섀도우
   glow: ""                       # 라디얼 글로우 색 (예: "#46538A" — 달빛)
   decor: false                   # 장식 활성화
