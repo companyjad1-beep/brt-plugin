@@ -103,7 +103,7 @@ description: 앱스토어/플레이스토어 출시 자산 자동 생성 — 앱
 
 **절차:**
 1. 마케팅 포인트별 배경 콘셉트를 정한다 (예: 감정일기 → 달빛 밤하늘, 가계부 앱 → 아늑한 저녁 식탁, 지도 앱 → 항공뷰 도시 보케).
-2. Fable 5급 기준으로 프롬프트를 작성한다 — brtimg 하네스가 있으면 `/brt:img-prmpt build`로, 없으면 그 규약대로 직접: 구도·조명(색온도/방향)·질감·색 팔레트(브랜드 hex 명시)·무드 전부 명시, 세로 비율, 상단 1/3은 텍스트 오버레이용 여백(low-detail) 지시, "no text, no letters, no logos" 필수.
+2. **brtimg 게이트로 프롬프트를 만든다 (필수 — 통합 후 brtimg는 같은 플러그인에 항상 있다)**: `${CLAUDE_PLUGIN_ROOT}/skills/brtimg/core/prompts/marketing-plate.md`(무인 배경·개념 슬라이드 레지스터)와 `shot-spec.md` 축으로 샷 스펙 브리프를 짜고, **codex 생성 전에** `brtimg/core/checklists/image.checklist.yaml`로 자가채점해 적용 항목이 전부 `충족`일 때만 넘긴다(`/brt:img-prmpt build`로 돌려도 된다). 필수 반영: 세로 타겟 비율 · 디바이스/카피 세이프 존은 low-detail 저대비 여백 · 브랜드 hex 팔레트 명시 · 광원 방향·색온도·질감으로 사진급 고정 · `no people, no text, no letters, no logos, no UI, no watermark`. 인물 브랜드-히어로형이면 `persona-marketing.md`를 병용한다. (구 "brtimg 없으면 직접" 폴백은 폐지 — 그 물렁한 경로가 5급을 죽였다.)
 3. **codex CLI로 생성** — codex는 내장 `image_gen` 스킬을 가지므로 워킹디렉토리와 저장 경로만 명시하면 생성→검증→저장까지 스스로 처리한다 (실측 검증됨, codex-cli 0.144+):
    ```
    codex exec --sandbox workspace-write -C <앱루트/store_assets> "이미지 생성 도구로 세로 배경 1장을 생성해 marketing/backgrounds/<name>.png 로 저장해라. 프롬프트: <영문 프롬프트>. 생성이 불가능하면 NOIMAGE 라고만 출력해라."
@@ -113,7 +113,7 @@ description: 앱스토어/플레이스토어 출시 자산 자동 생성 — 앱
 5. `config.yaml`의 해당 screen에 `background_image: marketing/backgrounds/<name>.png` + `overlay`(텍스트 대비용, 기본 0.35)를 지정하고 4단계 렌더링을 재실행한다.
 6. **이미지별 설명 작성** → `store_assets/marketing/captions.md`: 각 최종 이미지마다 파일명, 스토어 슬롯(몇 번째 스크린샷), 대응 마케팅 포인트, 화면 속 카피, 배경 콘셉트와 의도, 생성 프롬프트 요약을 기록한다. 이 파일이 스토어 업로드 순서의 기준이다.
 
-**개념 슬라이드(화면 없는 포인트 이미지) 렌더:** 3단계 4번으로 `개념(codex)` 표기된 포인트는 배경이 아니라 **슬라이드 전체가 생성 이미지**다. 위 절차와 동일하게 프롬프트 작성·생성·검증하되, 프롬프트에 앱 UI 배제를 명시("no app UI, no phone screen, no interface, no text")하고, config의 해당 screen에서 **`source`를 생략**하고 `background_image`만 지정한다 — 렌더러가 풀블리드 이미지 위에 뱃지·헤드라인·서브만 얹는다(디바이스 합성 없음). `overlay`(0.35~0.5)로 텍스트 대비 확보.
+**개념 슬라이드(화면 없는 포인트 이미지) 렌더:** 3단계 4번으로 `개념(codex)` 표기된 포인트는 배경이 아니라 **슬라이드 전체가 생성 이미지**다. 위 절차(marketing-plate 레지스터 + 체크리스트 게이트)와 동일하게 작성·생성·검증하되, 프롬프트에 앱 UI 배제를 명시("no app UI, no phone screen, no interface, no text")하고, config의 해당 screen에서 **`source`를 생략**하고 `background_image`만 지정한다 — 렌더러가 풀블리드 이미지 위에 뱃지·헤드라인·서브만 얹는다(디바이스 합성 없음). `overlay`(0.35~0.5)로 텍스트 대비 확보.
 
 **스토어 밖 배너 (OG·소셜·PH 갤러리·스토리) — `banners:` 섹션:** 렌더러 config 최상위 `banners:`에 임의 사이즈를 선언하면 가로·정사각은 피처그래픽 레이아웃, 세로는 스크린샷 레이아웃으로 렌더된다(`config.example.yaml` 참조). **경계 규칙**: ⓐ 스토어 심사 대상이 아니므로 배너 비주얼은 생성 이미지(제품 사진 레퍼런스 + GPT Image 2/codex) 자유 — "UI 위조 금지"는 스토어 스크린샷 세트에만 적용된다. ⓑ 단, 한글 문구는 배너에서도 반드시 렌더러가 얹는다(생성기 한글 깨짐). ⓒ 카피·팔레트·폰트는 스크린샷 세트와 공유해 브랜드 일관성을 유지한다.
 
@@ -124,7 +124,7 @@ description: 앱스토어/플레이스토어 출시 자산 자동 생성 — 앱
 - [ ] 카피 패스(1-b): 전 컷 헤드라인·서브가 벤핏 사다리 꼭대기 + 즉시 감사 통과
 - [ ] 소개글: 스토어별 × 로케일별 파일 생성, 전 항목 글자수 제한 통과
 - [ ] 스크린샷: 타겟 규격 × 로케일 × 화면 전부 생성, 시각 검증 통과 (개념 슬라이드 사용 시 세트에 실제 UI 캡처 ≥1장 확인)
-- [ ] 히어로/배경: 배경 소스 결정(codex 소품·사진급 vs 절차적) 사용자 합의 완료
+- [ ] 히어로/배경: 배경 소스 결정(codex 소품·사진급 vs 절차적) 사용자 합의 완료 + codex 배경은 marketing-plate 레지스터 + image.checklist 게이트 통과 확인
 - [ ] `captions.md` 작성 완료 (슬롯·카피·근거·업로드 순서 — 배경 방식과 무관하게 필수)
 - [ ] 카피 검증: 전 컷·전 문장이 PATTERNS 카피 감사 통과 (북극성 "다운로드 이유인가" · 범용성 · 서브 재진술 금지 · 동사 반복 · brtwrite AI티 검사)
 - [ ] 산출물 경로 요약 보고
