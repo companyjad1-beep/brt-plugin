@@ -1,6 +1,6 @@
 {
   "name": "brt",
-  "version": "0.7.0",
+  "version": "0.1.1",
   "description": "브라이트 툴킷 — kickoff v0.3(프로젝트 킥오프 인터뷰→기반 문서) + marketing-plan v0.7(plan: 마케팅 기획 문서 / post: 실측 기반 콘텐츠 파이프라인 — 재료 금고·강점 인벤토리 × 독자 질문 실조사 매트릭스로 주제 선정 → 채널·도메인 일치 레퍼런스 해부 → 골격표 이식 → 치수·훅 부품 검증) + brtwritenotai(AI 티 없는 한국어 글쓰기 하네스, 음화 32·양화 22·프리셋 7종) + brtimg(Fable 5급 이미지·영상 프롬프트 하네스) + store-shots(스토어 출시 자산 자동 생성 — PRD 기반 마케팅 포인트→소개글→캡처→규격 스크린샷·피처 그래픽. 실측 패턴 라이브러리(KR/US/JP ~350앱)·제타식 카피 원칙·세트 QA·인용 카드·codex 배경(조건부) 포함). SOT: 스킬 5개 원본이 이 플러그인 레포다(고치고 push=끝, sync 스크립트 없음). 외부 반입 자산은 builder.html 하나뿐 — newz의 public/brtimg/builder.html을 `node scripts/publish-builder.mjs`로 assets/brtimg에 밀고 여기서 commit+push.",
   "author": {
     "name": "brt"
