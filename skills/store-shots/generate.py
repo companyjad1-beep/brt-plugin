@@ -464,7 +464,9 @@ def render(
         # Readability default (gagyebbu postmortem): in-device text scales with
         # width only, so framed devices default big; frameless cards stay 0.80.
         device_width = 0.88 if frame else 0.80
-    if shot_path is not None and frame and device_width < 0.85:
+    # Readability floor applies to phone-aspect canvases only — on tablet canvases
+    # (w/h >= 0.55) a phone capture must shrink below 0.85 to fit at all.
+    if shot_path is not None and frame and device_width < 0.85 and width / height < 0.55:
         qa_warn(qa_tag, f"device_width {device_width} — 0.85 미만이면 폰 속 글자가 죽는다 (보라고 넣는 것)")
     if quote:
         device = build_quote_card(quote, round(width * device_width))
