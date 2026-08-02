@@ -1,5 +1,6 @@
 {
   "name": "brt-marketplace",
+  "description": "사업 정의부터 최신 주제 리서치·채널별 글쓰기·이미지·스토어 출시 자산까지 연결하는 BRT 플러그인 마켓플레이스",
   "owner": {
     "name": "brt"
   },
@@ -7,7 +8,7 @@
     {
       "name": "brt",
       "source": "./",
-      "description": "브라이트 툴킷: /brt:kickoff → /brt:write-notai → /brt:img-prmpt → /brt:store-shots — 사업 정의부터 글·이미지·스토어 출시 자산까지 (write-notai·img-prmpt 커맨드는 첫 인자로 세부 모드 라우팅)"
+      "description": "브라이트 툴킷: /brt:kickoff → /brt:marketing-auto(write 기본, run별 신규 리서치·주제팩·채널별 생산) → /brt:write-notai → /brt:img-prmpt → /brt:store-shots — 사업 정의부터 콘텐츠 생산·검수·출시 자산까지"
     }
   ]
 }

@@ -4,6 +4,7 @@
 
 - 훅 규칙 충돌 해소 — research.md 훅 선택을 write(자동 선택+대안 병기)/batch(사용자 선택 게이트)로 분리. 일반 write가 사용자 대기로 멈추던 결함 수정.
 - 잔여 "다음 배치" 표현을 write 기본 취지에 맞게 정리(commands·SKILL·report·plugin.json 설명).
+- 마켓플레이스 문서에 최상위 설명과 `/brt:marketing-auto` 진입 흐름을 추가해 1.2.1의 write 기본 동작을 설치 화면에서도 확인할 수 있게 정리.
 
 ## 1.2.0 — 2026-08-02
 
