@@ -19,7 +19,7 @@ collect 모드에서 로드한다. Claude in Chrome(claude-in-chrome 스킬/도�
 | 유튜브 쇼츠 | YouTube Studio → 콘텐츠 → 해당 쇼츠 분석 | 조회수·평균 시청 지속·좋아요·구독 전환 |
 | 티스토리 (운영 시) | 관리자 → 통계 | 방문자·조회수·유입 키워드 |
 
-**사이트 전환(퍼널 마지막 단)은 GA4로 함께 읽는다** — 채널 지표만 보면 "글은 봤는데 사이트로 왔는가"가 장님이 된다. GA4 세션 채널(Organic Social·Referral)과 UTM(`utm_source=threads/naverblog/tistory` — 쓰레드 바이오 링크는 자동 UTM)으로 게시물→홈페이지 유입을 수집일 스탬프와 함께 기록한다.
+**사이트 전환(퍼널 마지막 단)은 GA4로 함께 읽는다** — 채널 지표만 보면 "글은 봤는데 사이트로 왔는가"가 장님이 된다. 각 채널의 게시물 링크나 프로필 링크를 붙이는 담당자는 쓰레드에 `utm_source=threads`, 네이버 블로그에 `utm_source=naverblog`, 티스토리에 `utm_source=tistory`를 각각 태깅한다(쓰레드 바이오 링크는 자동 UTM). GA4 세션 채널(Organic Social·Referral)과 이 UTM으로 게시물→홈페이지 유입을 수집일 스탬프와 함께 기록한다.
 
 페이지 구조는 수시로 바뀐다 — 셀렉터를 하드코딩하지 말고 화면을 읽어서 찾는다. 2~3회 시도해도 못 찾으면 실패로 기록하고 다음 채널로 넘어간다.
 
