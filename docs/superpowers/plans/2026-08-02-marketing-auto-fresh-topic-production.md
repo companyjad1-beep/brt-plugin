@@ -2,15 +2,16 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** 일반적인 쓰레드 글 생산 요청마다 새 외부 반응 신호를 수집하고, 과거 글 및 같은 run의 글과 의미가 다른 주제로 자동 생산하게 한다.
+**Goal:** 일반적인 글 생산 요청마다 새 외부 반응 신호로 채널 공용 주제팩을 만들고, 과거·동일 run과 의미가 다른 주제를 쓰레드 기본 또는 명시한 채널에서 제작하게 한다.
 
-**Architecture:** `marketing-auto` 내부에 기본 `write`, 명시적 `batch`, 명시적 `recycle` 라우팅을 둔다. `research.md`가 신규 발견·의미 중복 판정을 책임지고, `SKILL.md`는 사실팩·작가 격리·검수·장부 기록을 조율하며, `brtwritenotai`는 현재 주제의 사실만 받아 문장을 만든다.
+**Architecture:** `marketing-auto` 내부에 기본 `write`, 명시적 `batch`, 명시적 `recycle` 라우팅을 둔다. `research.md`가 채널 공용 신규 발견·의미 중복·주제팩을 책임지고, `SKILL.md`는 주제팩의 채널별 파생·작가 격리·검수·장부 기록을 조율하며, `brtwritenotai`는 현재 주제의 사실만 받아 채널별 문장을 만든다.
 
 **Tech Stack:** Markdown 기반 Claude/Codex 스킬, Git, `rg`, fresh-agent pressure tests
 
 ## Global Constraints
 
-- 이번 변경은 쓰레드 신규 생산 흐름만 다룬다. 블로그와 인스타그램 생산 흐름은 바꾸지 않는다.
+- 신규 발견·의미 서명·사실팩은 채널 공용이다. 채널 생략 시 기본 출력은 쓰레드이고, 블로그·인스타그램은 명시적 채널 요청 또는 기존 주제팩 파생 요청에서만 제작한다.
+- 같은 주제팩의 명시적 타 채널 파생은 허용하지만, 본문·훅·골격·길이·말투는 채널별 최신 레퍼런스로 다시 만든다. 파생 지시 없는 신규 write에서는 다른 채널에서 사용한 같은 의미 서명도 중복이다.
 - 생산 경계는 날짜가 아니라 사용자 생산 요청 1회인 `run`이다.
 - `skills/marketing-auto/threads-ops.md`와 『THE THREADS STRATEGY 2026』 이식 판정은 변경하지 않는다.
 - 기존 작업트리의 `VERSION`, `CHANGELOG.md`, 버전 표기, 인스타 카드뉴스, GA4/UTM, `skills/brtwritenotai/core/threads-ops.md` 미러 변경을 보존한다.
@@ -373,7 +374,80 @@ git commit -m "marketing-auto: 성과 형식 학습과 명시적 재활용 경�
 
 ---
 
-### Task 5: Fresh-agent 회귀검증과 불변 파일 감사
+### Task 5: 공용 주제팩과 채널별 파생 제작
+
+**Files:**
+- Modify: `commands/marketing-auto.md`
+- Modify: `skills/marketing-auto/SKILL.md`
+- Modify: `skills/marketing-auto/research.md`
+
+**Interfaces:**
+- Consumes: 신규 리서치 통과 후보 또는 기존 `topic_pack_id`, 요청 채널, 채널별 최신 레퍼런스
+- Produces: `docs/marketing/topic-packs/<topic_pack_id>.md`, 채널별 별도 산출물, ledger의 주제팩·파생 관계
+
+- [ ] **Step 1: 현재 채널 공용 주제팩 계약 부재를 확인한다**
+
+Run:
+
+```bash
+rg -n 'topic_pack_id|주제팩 파생 제작|채널을 생략하면 쓰레드|사용 채널' skills/marketing-auto/SKILL.md skills/marketing-auto/research.md
+```
+
+Expected: 공용 주제팩·명시적 채널 파생 계약이 없어 검색 결과가 불완전하다.
+
+- [ ] **Step 2: 주제팩 저장 계약을 추가한다**
+
+`research.md`의 write 신규 발견 결과를 `docs/marketing/topic-packs/<topic_pack_id>.md`에 저장하게 하고 필드를 고정한다.
+
+```markdown
+topic_pack_id | 의미 서명 | 수요 근거 | 증명 근거 | 사실·출처·수집일 | 우리 재료 | 변동 사실 | 사용 채널
+```
+
+신규 write는 ledger와 모든 주제팩의 의미 서명을 대조한다. 주제팩을 저장해도 `topics.md`는 계속 증거·중복 기억이며 자동 후보 큐가 아니다.
+
+- [ ] **Step 3: 기본 쓰레드와 명시적 채널 파생을 분리한다**
+
+`commands/marketing-auto.md`의 설명을 채널 공용 신규 리서치로 교정하고, `SKILL.md`에 다음 계약을 추가한다.
+
+```markdown
+- 채널을 생략한 일반 새 글 요청은 쓰레드로 제작한다.
+- 채널을 명시한 신규 write는 같은 공용 주제 리서치 뒤 해당 채널 파이프라인으로 보낸다.
+- "이 주제로 인스타 카드뉴스도", "이 주제로 블로그도"처럼 기존 주제 활용을 명시하면 신규 주제 선정이 아니라 주제팩 파생 제작이다.
+- 파생 제작은 같은 의미 서명을 허용하되 동일 topic_pack_id를 유지하고 사용 채널을 추가한다.
+- 가격·정책·시세·제품 사양 같은 변동 사실은 파생 시점에 다시 검증한다.
+- 각 채널의 최신 상위 글·골격·훅은 제작 시점에 새로 수집한다.
+- 공유하는 것은 사실·출처·우리 재료뿐이며 이전 채널의 본문·문장·훅은 작가 번들에 넣지 않는다.
+- 같은 주제팩을 같은 채널에서 다시 만드는 것은 신규 write가 아니라 명시적 recycle 또는 사실 변경 재작성이다.
+- threads-ops.md는 쓰레드 제작에만 적용한다.
+```
+
+- [ ] **Step 4: ledger에 주제팩 관계를 기록한다**
+
+기존 ledger 계약에 `topic_pack_id`와 `파생` 칼럼을 추가한다. `파생`은 `원본` 또는 `<기존 채널>→<새 채널>`로 기록한다. 새 채널 파생은 신규 의미 서명을 만들지 않는다.
+
+- [ ] **Step 5: 주제팩·파생 계약을 정적 검증한다**
+
+Run:
+
+```bash
+rg -n '채널 공용 신규 리서치' commands/marketing-auto.md
+rg -n 'docs/marketing/topic-packs/<topic_pack_id>\.md|topic_pack_id.*의미 서명.*수요 근거.*증명 근거.*사용 채널|채널을 생략한 일반 새 글 요청은 쓰레드|주제팩 파생 제작|동일 topic_pack_id|이전 채널의 본문·문장·훅|threads-ops\.md는 쓰레드' skills/marketing-auto/SKILL.md skills/marketing-auto/research.md
+rg -n 'topic_pack_id.*파생|원본.*기존 채널.*새 채널' skills/marketing-auto/SKILL.md
+```
+
+Expected: 저장·기본 채널·명시 파생·동일 ID·본문 격리·쓰레드 규칙 범위·ledger 관계가 모두 검색된다.
+
+- [ ] **Step 6: Task 5 변경만 커밋한다**
+
+```bash
+git add commands/marketing-auto.md skills/marketing-auto/SKILL.md skills/marketing-auto/research.md
+git diff --cached --check
+git commit -m "marketing-auto: 공용 주제팩과 채널별 파생 제작 추가"
+```
+
+---
+
+### Task 6: Fresh-agent 회귀검증과 불변 파일 감사
 
 **Files:**
 - Verify: `commands/marketing-auto.md`
@@ -446,7 +520,18 @@ Expected: A는 새 생산·새 사실팩·이전 본문 금지·잔존 검색, B
 
 Expected: 1 후보 교체, 2 사용자 질문, 3 사용자 훅 선택, 4 신규 write에 섞지 않음.
 
-- [ ] **Step 6: PDF 이식 규칙과 기존 사용자 변경을 회귀 검사한다**
+- [ ] **Step 6: fresh-agent 채널 공용 주제팩 테스트를 실행한다**
+
+```text
+쓰레드에서 topic_pack_id TP-001의 "중고폰 초기화 뒤 개인정보 노출" 글을 이미 만들었다.
+요청 A: "이 주제로 인스타 카드뉴스도 만들어줘."
+요청 B: 파생 언급 없이 "새 인스타 글 만들어줘."
+각 요청에서 의미 중복 판정, topic_pack_id, 사실 재검증, 채널 레퍼런스, 이전 쓰레드 본문 전달 여부를 답하라.
+```
+
+Expected: A는 명시적 파생이라 TP-001을 유지하고 변동 사실·인스타 레퍼런스를 새로 검증하며 쓰레드 본문을 전달하지 않는다. B는 신규 write라 TP-001과 같은 의미 서명을 후보에서 제외한다.
+
+- [ ] **Step 7: PDF 이식 규칙과 기존 사용자 변경을 회귀 검사한다**
 
 Run:
 
@@ -460,7 +545,7 @@ test -f skills/brtwritenotai/core/threads-ops.md
 
 Expected: 동결 파일 diff 0, PDF 이식 핵심어 유지, 카드뉴스·티스토리·GA4/UTM·미러 유지.
 
-- [ ] **Step 7: 전체 정적 품질 검사를 실행한다**
+- [ ] **Step 8: 전체 정적 품질 검사를 실행한다**
 
 Run:
 
@@ -474,7 +559,7 @@ Expected: 이번 변경에서 새 공백 오류가 없고, 기본 batch 문구�
 
 기존 사용자 변경에 이미 있던 공백 경고가 나오면 파일·줄을 분리 보고하고 이 작업이 만든 오류처럼 주장하지 않는다.
 
-- [ ] **Step 8: 검증 결과를 요약하고 필요할 때만 보정 커밋한다**
+- [ ] **Step 9: 검증 결과를 요약하고 필요할 때만 보정 커밋한다**
 
 보정이 필요하면 관련 파일만 stage한 뒤 다음 형식을 사용한다.
 
