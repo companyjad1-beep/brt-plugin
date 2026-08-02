@@ -1,5 +1,5 @@
 ---
-description: "마케팅 자동화 하네스 — 쓰레드 신규 리서치→의미 중복 차단→편별 생산(write), 명시적 배치 계획(batch), 성과 수집·분석"
+description: "마케팅 자동화 하네스 — 채널 공용 신규 리서치→의미 중복 차단→채널별 생산(write), 명시적 배치 계획(batch), 성과 수집·분석"
 argument-hint: "[write|batch|recycle|collect|report|engage] [편수·주제·지시] · 일반 글 요청/생략 시 write"
 ---
 `${CLAUDE_PLUGIN_ROOT}/skills/marketing-auto/SKILL.md`를 읽고, `$ARGUMENTS`의 첫 토큰으로 모드를 판별해 실행하라:
@@ -8,11 +8,11 @@ argument-hint: "[write|batch|recycle|collect|report|engage] [편수·주제·지
 - `report` → **report 모드** — report.md 로드, 장부 분석·골격 승격/도태·다음 배치 권고.
 - `engage` → **engage 모드** — SKILL.md §engage. 오늘 뜨는 도메인 글 표적 수집→답글 초안(brtwritenotai 답글 모드)→전문 출력·기록.
 - `publish` → 미구현 예약석 — "게시는 수동, publish는 아직 없음"이라고 답한다.
-- `write` → 토큰을 소비하고 나머지 인자를 신규 생산 지시로 쓴다.
+- `write` → 토큰을 소비하고 나머지 인자를 신규 생산 지시로 쓴다. 채널 생략 시 쓰레드, 채널 명시 시 해당 채널로 제작한다.
 - `batch` → 토큰을 소비하고 기존 승인형 배치 생산을 실행한다.
 - `recycle` → 토큰을 소비하고 report가 지목한 기존 글의 명시적 재활용만 실행한다.
-- 그 외/생략 → **write 모드**. 일반적인 "새 글", "쓰레드 글 N개" 요청을 신규 생산 지시로 사용한다.
+- 그 외/생략 → **write 모드**. 일반적인 "새 글", "쓰레드 글 N개" 요청을 신규 생산 지시로 사용하며, 채널을 생략한 일반 새 글은 쓰레드로 제작한다.
 
-해당 모드에 필요한 문서만 로드한다. write와 batch는 시작 전에 SKILL.md와 research.md를 Read로 다시 읽는다 — 기억으로 실행 금지.
+해당 모드에 필요한 문서만 로드한다. write와 batch는 시작 전에 SKILL.md와 research.md를 Read로 다시 읽는다 — 기억으로 실행 금지. threads-ops.md는 쓰레드 제작 분기에서만 로드한다.
 
 사용자 추가 지시: $ARGUMENTS
