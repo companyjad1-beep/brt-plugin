@@ -5,7 +5,7 @@ argument-hint: "[write|batch|recycle|collect|report|engage] [편수·주제·지
 `${CLAUDE_PLUGIN_ROOT}/skills/marketing-auto/SKILL.md`를 읽고, `$ARGUMENTS`의 첫 토큰과 아래의 명시적 자연어 의도로 모드를 판별해 실행하라:
 
 - `collect` → **collect 모드** — collect.md 로드, 브라우저로 4채널 지표 수집.
-- `report` → **report 모드** — report.md 로드, 장부 분석·골격 승격/도태·다음 배치 권고.
+- `report` → **report 모드** — report.md 로드, 장부 분석·골격 승격/도태·다음 생산(write) 권고.
 - `engage` → **engage 모드** — SKILL.md §engage. 오늘 뜨는 도메인 글 표적 수집→답글 초안(brtwritenotai 답글 모드)→전문 출력·기록.
 - `publish` → 미구현 예약석 — "게시는 수동, publish는 아직 없음"이라고 답한다.
 - `write` → 토큰을 소비하고 나머지 인자를 신규 생산 지시로 쓴다. 채널 생략 시 쓰레드, 채널 명시 시 해당 채널로 제작한다.

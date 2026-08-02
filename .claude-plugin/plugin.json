@@ -1,7 +1,7 @@
 {
   "name": "brt",
-  "version": "1.2.0",
-  "description": "브라이트 툴킷 — kickoff v0.3(프로젝트 킥오프 인터뷰→기반 문서) + marketing-auto(마케팅 자동화 하네스 — 목적 게이트·주제 삼각측량(수요×터진 콘텐츠 역산×우리 재료)→채널 매칭→글·영상 레퍼런스 해부·골격 라이브러리→배치 생산(batch)→브라우저 4채널 성과 수집(collect)→분석·골격 승격/도태(report) 순환. 전신 marketing-plan은 0.2.0에서 삭제 — 검증된 실측만 research.md로 승계) + brtwritenotai(AI 티 없는 한국어 글쓰기 하네스, 음화 32·양화 22·프리셋 7종) + brtimg(Fable 5급 이미지·영상 프롬프트 하네스) + store-shots(스토어 출시 자산 자동 생성 — PRD 기반 마케팅 포인트→소개글→캡처→규격 스크린샷·피처 그래픽. 실측 패턴 라이브러리(KR/US/JP ~350앱)·제타식 카피 원칙·세트 QA·인용 카드·codex 배경(조건부) 포함). SOT: 스킬 원본이 이 플러그인 레포다(고치고 push=끝, sync 스크립트 없음). 외부 반입 자산은 builder.html 하나뿐 — newz의 public/brtimg/builder.html을 `node scripts/publish-builder.mjs`로 assets/brtimg에 밀고 여기서 commit+push.",
+  "version": "1.2.1",
+  "description": "브라이트 툴킷 — kickoff v0.3(프로젝트 킥오프 인터뷰→기반 문서) + marketing-auto(마케팅 자동화 하네스 — 목적 게이트·주제 삼각측량(수요×터진 콘텐츠 역산×우리 재료)→채널 매칭→글·영상 레퍼런스 해부·골격 라이브러리→신규 생산(write, 기본 — run별 신규 리서치·의미 중복 게이트·주제팩)·승인형 배치(batch)·명시적 재발행(recycle)→브라우저 4채널 성과 수집(collect)→분석·골격 승격/도태(report) 순환. 전신 marketing-plan은 0.2.0에서 삭제 — 검증된 실측만 research.md로 승계) + brtwritenotai(AI 티 없는 한국어 글쓰기 하네스, 음화 32·양화 22·프리셋 7종) + brtimg(Fable 5급 이미지·영상 프롬프트 하네스) + store-shots(스토어 출시 자산 자동 생성 — PRD 기반 마케팅 포인트→소개글→캡처→규격 스크린샷·피처 그래픽. 실측 패턴 라이브러리(KR/US/JP ~350앱)·제타식 카피 원칙·세트 QA·인용 카드·codex 배경(조건부) 포함). SOT: 스킬 원본이 이 플러그인 레포다(고치고 push=끝, sync 스크립트 없음). 외부 반입 자산은 builder.html 하나뿐 — newz의 public/brtimg/builder.html을 `node scripts/publish-builder.mjs`로 assets/brtimg에 밀고 여기서 commit+push.",
   "author": {
     "name": "brt"
   }
